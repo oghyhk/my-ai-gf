@@ -1,0 +1,12 @@
+{
+  "appId": "com.ai.companion",
+  "appName": "AI Companion",
+  "webDir": "dist",
+  "server": {
+    "url": "http://asc.hk:3000",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

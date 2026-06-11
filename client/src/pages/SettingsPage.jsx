@@ -6,6 +6,8 @@ export default function SettingsPage() {
   const [agentStatus, setAgentStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [updateLog, setUpdateLog] = useState('');
 
   useEffect(() => {
     loadData();
@@ -36,6 +38,28 @@ export default function SettingsPage() {
       alert('保存失败，请重试');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    setUpdating(true);
+    setUpdateLog('');
+    try {
+      const response = await fetch('/api/agent/update', { method: 'POST' });
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let log = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        log += decoder.decode(value, { stream: true });
+        setUpdateLog(log);
+      }
+    } catch (error) {
+      setUpdateLog(`Error: ${error.message}`);
+    } finally {
+      setUpdating(false);
+      window.location.reload();
     }
   };
 
@@ -159,6 +183,26 @@ export default function SettingsPage() {
           >
             {saving ? '保存中...' : '保存设置'}
           </button>
+        </div>
+
+        {/* Update */}
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+          <h2 className="font-medium text-gray-900 text-lg mb-3">应用更新</h2>
+          <p className="text-sm text-gray-600 mb-3">
+            从 GitHub 获取最新代码并自动重新构建前端。
+          </p>
+          <button
+            onClick={handleUpdate}
+            disabled={updating}
+            className="w-full py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 mb-2"
+          >
+            {updating ? '更新中...' : '🔄 检查并更新'}
+          </button>
+          {updateLog && (
+            <pre className="bg-gray-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto max-h-48 overflow-y-auto font-mono">
+              {updateLog}
+            </pre>
+          )}
         </div>
 
         {/* About */}
