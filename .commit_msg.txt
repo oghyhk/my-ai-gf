@@ -1,0 +1,30 @@
+feat: complete AI Companion app with chat, memory, moments & emotion engine
+
+Full-stack personal AI companion application featuring:
+
+Backend (Node.js + Express):
+- Chat with streaming SSE responses via DeepSeek API
+- Three-layer memory system (full retention, rolling summaries, RAG with RRF fusion)
+- Dynamic emotion state engine with decay over time
+- Three-layer personality system (fixed + dynamic state + dynamic memory)
+- Web search and web fetch tools for the AI
+- Moments/朋友圈 system with image upload
+- Cron-based AI monitoring of moments (12 random checks/day)
+- Mimo vision API integration for image understanding
+- Field-level AES-256-GCM encryption
+- PM2 process management
+
+Vector Service (Python FastAPI):
+- ChromaDB for semantic vector storage and retrieval
+- Powers the RAG triple-recall pipeline
+
+Frontend (React PWA + Vite + Tailwind):
+- WeChat-inspired mobile/iPad responsive UI
+- Real-time streaming chat with typing indicators
+- Moments feed with AI interactions (likes/comments)
+- Voice recording input support
+- Image sharing in chat
+- Settings page with emotion visualization and personality config
+- Conversation export to JSON
+
+Co-authored-by: CommandCodeBot <noreply@commandcode.ai>

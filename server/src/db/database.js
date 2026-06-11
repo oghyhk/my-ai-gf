@@ -329,3 +329,94 @@ export function updateCronLastCheck() {
   const d = getDb();
   d.prepare(`UPDATE cron_schedule SET last_check = datetime('now') WHERE id = 1`).run();
 }
+
+// Diary helpers
+export function insertDiary(content, mood = null) {
+  const d = getDb();
+  const result = d.prepare(
+    `INSERT INTO diaries (content, mood) VALUES (?, ?)`
+  ).run(content, mood);
+  return result.lastInsertRowid;
+}
+
+export function getDiaries(limit = 30, offset = 0) {
+  const d = getDb();
+  return d.prepare(
+    `SELECT * FROM diaries ORDER BY created_at DESC LIMIT ? OFFSET ?`
+  ).all(limit, offset);
+}
+
+export function getDiary(id) {
+  const d = getDb();
+  return d.prepare(`SELECT * FROM diaries WHERE id = ?`).get(id);
+}
+
+export function updateDiaryAIComment(id, comment) {
+  const d = getDb();
+  d.prepare(
+    `UPDATE diaries SET ai_comment = ?, ai_commented_at = datetime('now') WHERE id = ?`
+  ).run(comment, id);
+}
+
+export function getUncommentedDiaries() {
+  const d = getDb();
+  return d.prepare(
+    `SELECT * FROM diaries WHERE ai_comment IS NULL ORDER BY created_at ASC LIMIT 5`
+  ).all();
+}
+
+// Relationship helpers
+export function getRelationship() {
+  const d = getDb();
+  const row = d.prepare(`SELECT * FROM relationship WHERE id = 1`).get();
+  return row ? { ...row, milestones: JSON.parse(row.milestones || '[]') } : null;
+}
+
+export function updateRelationshipStats() {
+  const d = getDb();
+  const now = new Date().toISOString();
+  
+  // Count total messages
+  const msgCount = d.prepare(
+    `SELECT COUNT(*) as cnt FROM messages WHERE role IN ('user', 'assistant')`
+  ).get().cnt;
+  
+  // Count unique days
+  const dayCount = d.prepare(
+    `SELECT COUNT(DISTINCT DATE(created_at)) as cnt FROM messages`
+  ).get().cnt;
+  
+  // Get first interaction
+  const first = d.prepare(
+    `SELECT MIN(created_at) as first FROM messages`
+  ).get().first;
+  
+  // Calculate affection points (based on message frequency and sentiment)
+  const rel = getRelationship();
+  const affectionPoints = (rel?.affection_points || 0) + 1;
+  
+  // Calculate level based on total interactions
+  const level = Math.floor(Math.sqrt(msgCount / 10)) + 1;
+  
+  d.prepare(`
+    UPDATE relationship 
+    SET total_messages = ?, 
+        total_days = ?, 
+        first_interaction = ?, 
+        last_interaction = ?,
+        affection_points = ?,
+        level = ?,
+        updated_at = ?
+    WHERE id = 1
+  `).run(msgCount, dayCount, first, now, affectionPoints, level, now);
+}
+
+export function addMilestone(milestone) {
+  const d = getDb();
+  const rel = getRelationship();
+  const milestones = rel?.milestones || [];
+  milestones.push({ ...milestone, date: new Date().toISOString() });
+  d.prepare(
+    `UPDATE relationship SET milestones = ? WHERE id = 1`
+  ).run(JSON.stringify(milestones));
+}

@@ -1,174 +1,155 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { Send, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 
-export default function InputBar({ onSend, onImageSend, disabled }) {
-  const [text, setText] = useState('');
-  const [showVoice, setShowVoice] = useState(false);
+export default function InputBar({ onSend, disabled, onVoiceToggle, voiceEnabled }) {
+  const [message, setMessage] = useState('');
   const [recording, setRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const fileInputRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const chunksRef = useRef([]);
-  const timerRef = useRef(null);
+  const [transcript, setTranscript] = useState('');
+  const textareaRef = useRef(null);
+  const recognitionRef = useRef(null);
 
-  const handleSend = () => {
-    if (!text.trim() || disabled) return;
-    onSend(text.trim());
-    setText('');
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
+    }
+  }, [message]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!message.trim() || disabled) return;
+    onSend(message.trim());
+    setMessage('');
   };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleSubmit(e);
     }
   };
 
-  const handleImageClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file && onImageSend) {
-      onImageSend(file);
+  const toggleRecording = () => {
+    if (recording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
-    e.target.value = '';
   };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      chunksRef.current = [];
+  const startRecording = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('您的浏览器不支持语音识别，请使用Chrome或Edge浏览器');
+      return;
+    }
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'zh-CN';
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        stream.getTracks().forEach(track => track.stop());
-        
-        // Use browser SpeechRecognition if available
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-          const recognition = new SpeechRecognition();
-          recognition.lang = 'zh-CN';
-          recognition.continuous = false;
-          
-          recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            if (transcript.trim()) {
-              onSend(transcript.trim());
-            }
-          };
-          
-          recognition.onerror = () => {
-            alert('语音识别失败，请手动输入');
-          };
-          
-          recognition.start();
-        } else {
-          alert('您的浏览器不支持语音识别');
-        }
-      };
-
-      mediaRecorder.start();
+    recognition.onstart = () => {
       setRecording(true);
-      setShowVoice(false);
-      setRecordingTime(0);
-      timerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
-    } catch (error) {
-      console.error('Recording error:', error);
-      alert('无法访问麦克风');
-    }
+      setTranscript('');
+    };
+
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        setMessage(prev => prev + finalTranscript);
+      }
+      setTranscript(interimTranscript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setRecording(false);
+    };
+
+    recognition.onend = () => {
+      setRecording(false);
+      setTranscript('');
+    };
+
+    recognition.start();
+    recognitionRef.current = recognition;
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && recording) {
-      mediaRecorderRef.current.stop();
-      setRecording(false);
-      clearInterval(timerRef.current);
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
     }
+    setRecording(false);
   };
 
-  if (recording) {
-    return (
-      <div className="h-[60px] bg-white border-t border-gray-200 flex items-center gap-2 px-4">
-        <div className="flex-1 text-center">
-          <span className="text-red-500 font-medium">🎙️ 录音中... {recordingTime}秒</span>
-        </div>
-        <button
-          onClick={stopRecording}
-          className="px-6 py-2 bg-red-500 text-white rounded-full font-medium hover:bg-red-600 transition-colors"
-        >
-          完成
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-[60px] bg-white border-t border-gray-200 flex items-center gap-2 px-4">
-      <button
-        onClick={() => setShowVoice(!showVoice)}
-        className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-wechat-green"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-        </svg>
-      </button>
-      
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="输入消息..."
-        disabled={disabled}
-        rows={1}
-        className="flex-1 px-4 py-2 bg-gray-100 rounded-full resize-none focus:outline-none focus:ring-2 focus:ring-wechat-green disabled:opacity-50 max-h-[80px]"
-        style={{ minHeight: '36px' }}
-      />
-      
-      <button
-        onClick={handleImageClick}
-        disabled={disabled}
-        className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-wechat-green disabled:opacity-50"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      </button>
-      
-      <input
-        type="file"
-        ref={fileInputRef}
-        accept="image/*"
-        onChange={handleImageChange}
-        className="hidden"
-      />
-      
-      {showVoice && (
+    <div className="bg-white border-t border-gray-200 p-3">
+      <div className="flex items-end gap-2">
         <button
-          onClick={startRecording}
-          className="w-8 h-8 flex items-center justify-center text-wechat-green hover:text-green-600"
+          onClick={onVoiceToggle}
+          className={`p-2 rounded-lg transition-colors ${
+            voiceEnabled
+              ? 'bg-blue-500 text-white hover:bg-blue-600'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+          title={voiceEnabled ? '关闭语音播报' : '开启语音播报'}
         >
-          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="8" />
-          </svg>
+          {voiceEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
         </button>
-      )}
-      
-      <button
-        onClick={handleSend}
-        disabled={disabled || !text.trim()}
-        className="px-4 py-2 bg-wechat-green text-white rounded-full text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-600 transition-colors"
-      >
-        发送
-      </button>
+
+        <button
+          onClick={toggleRecording}
+          className={`p-2 rounded-lg transition-colors ${
+            recording
+              ? 'bg-red-500 text-white hover:bg-red-600'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+          title={recording ? '停止录音' : '语音输入'}
+        >
+          {recording ? <MicOff size={20} /> : <Mic size={20} />}
+        </button>
+
+        <form onSubmit={handleSubmit} className="flex-1 flex items-end gap-2">
+          <div className="flex-1 relative">
+            <textarea
+              ref={textareaRef}
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={recording ? '正在听你说话...' : '输入消息...'}
+              disabled={disabled}
+              rows={1}
+              className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+            />
+            {transcript && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 px-3 py-2 bg-blue-50 text-blue-700 text-sm rounded-lg">
+                {transcript}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={!message.trim() || disabled}
+            className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+          >
+            <Send size={20} />
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

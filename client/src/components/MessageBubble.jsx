@@ -1,4 +1,6 @@
-export default function MessageBubble({ message, isUser }) {
+import { Volume2 } from 'lucide-react';
+
+export default function MessageBubble({ message, isUser, onSpeak }) {
   const formatTime = (dateStr) => {
     const d = new Date(dateStr);
     return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
@@ -34,8 +36,19 @@ export default function MessageBubble({ message, isUser }) {
             )}
             {message.content || (isUser ? '' : '...')}
           </div>
-          <div className="text-xs text-gray-400 mt-1 px-1">
-            {formatTime(message.created_at)}
+          <div className="flex items-center gap-2 mt-1 px-1">
+            <div className="text-xs text-gray-400">
+              {formatTime(message.created_at)}
+            </div>
+            {onSpeak && message.content && (
+              <button
+                onClick={onSpeak}
+                className="text-gray-400 hover:text-blue-500 transition-colors"
+                title="播放语音"
+              >
+                <Volume2 size={14} />
+              </button>
+            )}
           </div>
         </div>
       </div>

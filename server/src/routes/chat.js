@@ -191,8 +191,13 @@ router.post('/send', async (req, res) => {
   }
 });
 
-export default router;
-  }
+// Send image
+router.post('/send-image', upload.single('image'), async (req, res) => {
+  try {
+    const { conversationId } = req.body;
+    if (!conversationId) {
+      return res.status(400).json({ error: 'conversationId required' });
+    }
 
     if (!req.file) {
       return res.status(400).json({ error: 'No image uploaded' });

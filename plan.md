@@ -350,13 +350,26 @@ Recalled memory fragments dynamically injected:
 
 ## Deployment
 
-### PM2 (ecosystem.config.js)
-- Node.js server: `server/index.js`
+### VPS Deployment
+- **Server**: android@asc.hk (port 3680)
+- **Backend**: Deployed on VPS for 24/7 availability
+- **Frontend**: Served from VPS (static files built locally)
+- **Vector Service**: Runs on VPS alongside backend
+
+### Deployment Steps
+1. Build client locally: `cd client && npm run build`
+2. Upload to VPS via SCP or git clone
+3. Install dependencies on VPS: `npm install` (server), `pip install -r requirements.txt` (vector-service)
+4. Start services with PM2: `pm2 start ecosystem.config.cjs`
+5. Configure Cloudflare Tunnel to expose port 3000
+
+### PM2 (ecosystem.config.cjs)
+- Node.js server: `server/src/index.js`
 - Python vector service: `uvicorn main:app`
 - Auto-restart, log management
 
 ### Cloudflare Tunnel
-- Configure via `cloudflared` CLI
+- Configure via `cloudflared` CLI on VPS
 - Map tunnel to localhost:3000
 - Custom domain (optional)
 

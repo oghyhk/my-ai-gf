@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { Volume2, VolumeX } from 'lucide-react';
 import MessageBubble from '../components/MessageBubble';
 import InputBar from '../components/InputBar';
+import RelationshipBadge from '../components/RelationshipBadge';
+import { useTTS } from '../hooks/useTTS';
 import * as api from '../api/client';
 
 export default function ChatPage() {
