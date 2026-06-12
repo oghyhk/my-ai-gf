@@ -17,6 +17,7 @@ export default function SettingsPage() {
 
   const [agents, setAgents] = useState([]);
   const [selectedAgentId, setSelectedAgentId] = useState(null);
+  const [agentListCollapsed, setAgentListCollapsed] = useState(false);
   const [agentForm, setAgentForm] = useState(null);
   const [agentSaving, setAgentSaving] = useState(false);
   const [agentTab, setAgentTab] = useState('profile');
@@ -176,16 +177,27 @@ export default function SettingsPage() {
         {/* AGENTS */}
         {tab === 'agents' && (
           <div className="flex gap-3" style={{ minHeight: '60vh' }}>
-            {/* Agent list sidebar */}
-            <div className="w-36 flex-shrink-0 space-y-1">
-              {agents.map(a => (
+            <div className={`flex-shrink-0 space-y-1 transition-all duration-200 ${agentListCollapsed ? 'w-10' : 'w-36'}`}>
+              <button onClick={() => setAgentListCollapsed(!agentListCollapsed)} className="w-full px-2 py-2 rounded-lg text-xs mb-1 flex items-center justify-center"
+                style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+                <span className="text-lg leading-none">{agentListCollapsed ? '☰' : '✕'}</span>
+                {!agentListCollapsed && <span className="ml-1 text-xs">{t('settings.agents')}</span>}
+              </button>
+              {!agentListCollapsed && agents.map(a => (
                 <button key={a.id} onClick={() => loadAgentForEdit(a.id)} className="w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2"
                   style={selectedAgentId === a.id ? { background: 'var(--primary)', color: '#FFF' } : { background: 'var(--bg-card)', color: 'var(--text-secondary)' }}>
                   {a.profile_pic ? <img src={a.profile_pic} className="w-6 h-6 rounded-full object-cover" /> : <span className="text-base">{a.avatar_emoji || '🌸'}</span>}
                   <span className="truncate">{a.alias || a.name}</span>
                 </button>
               ))}
-              <button onClick={() => { setAgentForm({ id: '', name: '', avatar_emoji: '🌸', alias: '', bio: '', profile_pic: '', personality_text: '', age: '18', background: '', personality_md: '', user_md: '' }); setSelectedAgentId('new'); setMemories([]); }} className="w-full px-3 py-2 rounded-lg text-xs border border-dashed" style={{ color: 'var(--text-muted)', borderColor: 'var(--border-strong)' }}>{t('settings.newAgent')}</button>
+              {!agentListCollapsed && <button onClick={() => { setAgentForm({ id: '', name: '', avatar_emoji: '🌸', alias: '', bio: '', profile_pic: '', personality_text: '', age: '18', background: '', personality_md: '', user_md: '' }); setSelectedAgentId('new'); setMemories([]); }} className="w-full px-3 py-2 rounded-lg text-xs border border-dashed" style={{ color: 'var(--text-muted)', borderColor: 'var(--border-strong)' }}>{t('settings.newAgent')}</button>}
+              {agentListCollapsed && agents.map(a => (
+                <button key={a.id} onClick={() => loadAgentForEdit(a.id)} className="w-full h-9 rounded-lg flex items-center justify-center"
+                  style={selectedAgentId === a.id ? { background: 'var(--primary)', color: '#FFF' } : { background: 'var(--bg-card)', color: 'var(--text-secondary)' }}>
+                  <span className="text-base">{a.avatar_emoji || '🌸'}</span>
+                </button>
+              ))}
+              {agentListCollapsed && <button onClick={() => { setAgentForm({ id: '', name: '', avatar_emoji: '🌸', alias: '', bio: '', profile_pic: '', personality_text: '', age: '18', background: '', personality_md: '', user_md: '' }); setSelectedAgentId('new'); setMemories([]); }} className="w-full h-9 rounded-lg flex items-center justify-center border border-dashed" style={{ color: 'var(--text-muted)', borderColor: 'var(--border-strong)' }}>＋</button>}
             </div>
 
             {/* Agent editor */}
