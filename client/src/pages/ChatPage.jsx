@@ -7,7 +7,7 @@ import InputBar from '../components/InputBar';
 import PersonalPage from './PersonalPage';
 
 export default function ChatPage() {
-  const { t, lang } = useT();
+  const { t } = useT();
   const navigate = useNavigate();
   const [agents, setAgents] = useState([]);
   const [activeAgentId, setActiveAgentId] = useState(null);
@@ -19,11 +19,12 @@ export default function ChatPage() {
   const [showMenu, setShowMenu] = useState(false);
   const [lastUsage, setLastUsage] = useState({ prompt: 0, completion: 0 });
   const [profileTarget, setProfileTarget] = useState(null);
+  const [streamContent, setStreamContent] = useState('');
   const messagesEndRef = useRef(null);
   const menuRef = useRef(null);
 
   useEffect(() => { loadAgents(); loadUserProfile(); }, []);
-  useEffect(() => { scrollToBottom(); }, [messages]);
+  useEffect(() => { scrollToBottom(); }, [messages, streamContent]);
   useEffect(() => { const h = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, []);
 
   const loadAgents = async () => { try { setAgents(await (await fetch('/api/agents')).json()); } catch (e) {} };
@@ -31,25 +32,40 @@ export default function ChatPage() {
   const refreshAgent = async (agentId) => { try { const d = await (await fetch(`/api/agents/${agentId}`)).json(); setAgents(prev => prev.map(a => a.id === agentId ? { ...a, ...d } : a)); } catch (e) {} };
 
   const selectAgent = async (agentId) => {
-    setActiveAgentId(agentId); setView('chat'); await refreshAgent(agentId);
+    setActiveAgentId(agentId); setView('chat'); setStreamContent(''); await refreshAgent(agentId);
     try { const conv = await (await fetch(`/api/chat/agent-session/${agentId}`)).json(); setConvId(conv.id); setMessages(await api.getChatHistory(conv.id)); } catch (e) {}
   };
 
   const handleSend = useCallback(async (text) => {
     if (!convId) return;
-    const userMsg = { id: Date.now().toString(), role: 'user', content: text, created_at: new Date().toISOString() };
-    const assistantMsg = { id: (Date.now() + 1).toString(), role: 'assistant', content: '', created_at: new Date().toISOString() };
-    setMessages(prev => [...prev, userMsg, assistantMsg]); setStreaming(true);
-    try { await api.sendMessage(convId, text, (c) => setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: m.content + c } : m)), () => setStreaming(false), (e) => { setStreaming(false); }, (u) => setLastUsage({ prompt: u.prompt || 0, completion: u.completion || 0 })); } catch (e) { setStreaming(false); }
+    const userMsgId = Date.now().toString();
+    const userMsg = { id: userMsgId, role: 'user', content: text, created_at: new Date().toISOString() };
+    setMessages(prev => [...prev, userMsg]);
+    setStreaming(true);
+    setStreamContent('');
+    try {
+      await api.sendMessage(convId, text,
+        (c) => setStreamContent(prev => prev + c),
+        (data) => {
+          setStreaming(false);
+          setStreamContent('');
+          const segments = data.segments || [data.content || ''];
+          const ids = data.messageIds || [data.messageId];
+          const bubbles = segments.filter(s => s.trim()).map((seg, i) => ({
+            id: (ids[i] || `${userMsgId}_a_${i}`).toString(),
+            role: 'assistant', content: seg, created_at: new Date().toISOString(),
+          }));
+          setMessages(prev => [...prev, ...bubbles]);
+          if (data.usage) setLastUsage({ prompt: data.usage.prompt || 0, completion: data.usage.completion || 0 });
+        },
+        (e) => { setStreaming(false); setStreamContent(''); },
+        (u) => setLastUsage({ prompt: u.prompt || 0, completion: u.completion || 0 })
+      );
+    } catch (e) { setStreaming(false); setStreamContent(''); }
   }, [convId]);
 
   const getTimeAgo = (d) => { if (!d) return ''; const diff = Math.floor((+new Date() - +new Date(d)) / 1000); if (diff < 60) return t('moments.justNow'); if (diff < 3600) return t('moments.minsAgo', { n: Math.floor(diff / 60) }); if (diff < 86400) return t('moments.hoursAgo', { n: Math.floor(diff / 3600) }); return t('moments.daysAgo', { n: Math.floor(diff / 86400) }); };
-
-  const tokenInfo = () => {
-    if (lastUsage.prompt > 0 || lastUsage.completion > 0) return { display: t('chat.tokensReal', { p: lastUsage.prompt.toLocaleString(), c: lastUsage.completion.toLocaleString() }), real: true };
-    const chars = messages.reduce((sum, m) => sum + (m.content || '').length, 0);
-    return { display: t('chat.tokensEst', { n: Math.ceil(chars * 1.5).toLocaleString() }), real: false };
-  };
+  const tokenInfo = () => { if (lastUsage.prompt > 0 || lastUsage.completion > 0) return { display: t('chat.tokensReal', { p: lastUsage.prompt.toLocaleString(), c: lastUsage.completion.toLocaleString() }), real: true }; const chars = messages.reduce((sum, m) => sum + (m.content || '').length, 0); return { display: t('chat.tokensEst', { n: Math.ceil(chars * 1.5).toLocaleString() }), real: false }; };
   const tk = tokenInfo();
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   const agent = agents.find(a => a.id === activeAgentId);
@@ -75,7 +91,6 @@ export default function ChatPage() {
     );
   }
 
-  const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
   return (
     <div className="flex flex-col h-full" style={{ background: 'var(--bg-deep)' }}>
       <div className="app-header">
@@ -97,9 +112,10 @@ export default function ChatPage() {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto py-4 chat-container">
-        {messages.length === 0 && <div className="text-center pt-20 text-sm" style={{ color: 'var(--text-muted)' }}>{t('chat.saySomething')}</div>}
+        {messages.length === 0 && !streaming && <div className="text-center pt-20 text-sm" style={{ color: 'var(--text-muted)' }}>{t('chat.saySomething')}</div>}
         {messages.map(msg => <MessageBubble key={msg.id} message={msg} isUser={msg.role === 'user'} senderName={msg.role === 'user' ? userName : agentName} userPic={userProfile?.profile_pic || null} agentPic={agent?.profile_pic || null} />)}
-        {streaming && lastAssistantMsg?.content === '' && <div className="flex justify-start mb-3 px-4"><div className="typing-dots"><span /><span /><span /></div></div>}
+        {streaming && streamContent && <MessageBubble message={{ id: 'stream', role: 'assistant', content: streamContent, created_at: new Date().toISOString() }} isUser={false} senderName={agentName} agentPic={agent?.profile_pic || null} _streaming />}
+        {streaming && !streamContent && <div className="flex justify-start mb-3 px-4"><div className="typing-dots"><span /><span /><span /></div></div>}
         <div ref={messagesEndRef} />
       </div>
       <InputBar onSend={handleSend} disabled={streaming} placeholder={t('chat.input')} />

@@ -137,7 +137,8 @@ router.post('/send', async (req, res) => {
         
         if (delta.content) {
           fullResponse += delta.content;
-          res.write(`data: ${JSON.stringify({ type: 'content', content: delta.content })}\n\n`);
+          const display = delta.content.replace(/\|\|\|/g, '');
+          if (display) res.write(`data: ${JSON.stringify({ type: 'content', content: display })}\n\n`);
         }
       }
     } catch (e) {
@@ -189,10 +190,20 @@ router.post('/send', async (req, res) => {
       }
     }
     
-    const assistantMsgId = insertMessage(conversationId, 'assistant', fullResponse);
+    // Split response by ||| into multiple natural bubbles
+    const segments = fullResponse.split('|||').map(s => s.trim()).filter(Boolean);
+    const assistantMsgIds = [];
+    for (const seg of segments) {
+      const mid = insertMessage(conversationId, 'assistant', seg);
+      assistantMsgIds.push(mid);
+    }
+    if (assistantMsgIds.length === 0) {
+      const mid = insertMessage(conversationId, 'assistant', fullResponse || '');
+      assistantMsgIds.push(mid);
+    }
     updateConversationTime(conversationId);
     
-    res.write(`data: ${JSON.stringify({ type: 'done', messageId: assistantMsgId, usage: totalTokens })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done', messageIds: assistantMsgIds, segments, usage: totalTokens })}\n\n`);
     res.end();
     
     setImmediate(async () => {
