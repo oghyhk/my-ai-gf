@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import config from './config.js';
 import { getDb } from './db/database.js';
@@ -49,7 +50,28 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(clientDist, 'index.html'));
 });
 
+// Auto-backup on startup
+function startupBackup() {
+  const dbPath = config.db.path;
+  const dataDir = config.data.path;
+  const backupDir = path.join(dataDir, 'backups');
+  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  if (fs.existsSync(dbPath)) fs.copyFileSync(dbPath, path.join(backupDir, `companion-${ts}.db`));
+  const userDir = path.join(dataDir, 'user');
+  if (fs.existsSync(userDir)) {
+    for (const f of fs.readdirSync(userDir)) {
+      fs.copyFileSync(path.join(userDir, f), path.join(backupDir, `${f}-${ts}.md`));
+    }
+  }
+  // Keep only last 20 backups
+  const files = fs.readdirSync(backupDir).sort().reverse();
+  for (const f of files.slice(20)) fs.unlinkSync(path.join(backupDir, f));
+  console.log(`[Startup] Data backed up to ${backupDir}`);
+}
+
 // Initialize
+startupBackup();
 getDb();
 startEmotionDecay();
 startMomentsCron();

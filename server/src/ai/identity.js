@@ -75,8 +75,9 @@ function defaultPersonalityMd(agentName = '小悠') {
 export function ensureAgentFiles(agentId, agentName) {
   ensureUserDir();
   const up = getUserMdPath(agentId);
-  if (!fs.existsSync(up)) fs.writeFileSync(up, USER_MD_TEMPLATE, 'utf-8');
   const pp = getPersonalityPath(agentId);
+  // ONLY create if file does not exist — never overwrite existing data
+  if (!fs.existsSync(up)) fs.writeFileSync(up, USER_MD_TEMPLATE, 'utf-8');
   if (!fs.existsSync(pp)) fs.writeFileSync(pp, defaultPersonalityMd(agentName), 'utf-8');
 }
 
