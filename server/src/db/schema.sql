@@ -21,9 +21,6 @@ CREATE TABLE IF NOT EXISTS conversations (
   updated_at DATETIME DEFAULT (datetime('now'))
 );
 
--- Migration: add agent_id column if missing
-ALTER TABLE conversations ADD COLUMN agent_id TEXT NOT NULL DEFAULT 'default' REFERENCES agents(id) ON DELETE CASCADE;
-
 
 CREATE TABLE IF NOT EXISTS messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
