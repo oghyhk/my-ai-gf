@@ -108,12 +108,12 @@ router.post('/send', async (req, res) => {
     let fullResponse = '';
     let totalTokens = { prompt: 0, completion: 0 };
     let toolCallsAccum = [];
+    let pending = '';
     
     try {
       const stream = await chatStream(contextMessages);
       
       for await (const chunk of stream) {
-        // Check for usage info (last chunk with usage)
         if (chunk.usage) {
           totalTokens.prompt = chunk.usage.prompt_tokens || 0;
           totalTokens.completion = chunk.usage.completion_tokens || 0;
@@ -137,10 +137,20 @@ router.post('/send', async (req, res) => {
         
         if (delta.content) {
           fullResponse += delta.content;
-          const display = delta.content.replace(/\|\|\|/g, '');
-          if (display) res.write(`data: ${JSON.stringify({ type: 'content', content: display })}\n\n`);
+          pending += delta.content;
+          while (pending.includes('|||')) {
+            const idx = pending.indexOf('|||');
+            if (idx > 0) res.write(`data: ${JSON.stringify({ type: 'content', content: pending.slice(0, idx) })}\n\n`);
+            res.write(`data: ${JSON.stringify({ type: 'bubble_sep' })}\n\n`);
+            pending = pending.slice(idx + 3);
+          }
+          const safe = pending.length > 2 ? pending.slice(0, -2) : '';
+          if (safe) res.write(`data: ${JSON.stringify({ type: 'content', content: safe })}\n\n`);
+          pending = pending.slice(safe.length);
         }
       }
+      if (pending) res.write(`data: ${JSON.stringify({ type: 'content', content: pending })}\n\n`);
+      pending = '';
     } catch (e) {
       console.error('Stream error:', e.message);
     }

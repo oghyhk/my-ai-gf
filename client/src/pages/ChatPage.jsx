@@ -19,12 +19,12 @@ export default function ChatPage() {
   const [showMenu, setShowMenu] = useState(false);
   const [lastUsage, setLastUsage] = useState({ prompt: 0, completion: 0 });
   const [profileTarget, setProfileTarget] = useState(null);
-  const [streamContent, setStreamContent] = useState('');
+  const [showTyping, setShowTyping] = useState(false);
   const messagesEndRef = useRef(null);
   const menuRef = useRef(null);
 
   useEffect(() => { loadAgents(); loadUserProfile(); }, []);
-  useEffect(() => { scrollToBottom(); }, [messages, streamContent]);
+  useEffect(() => { scrollToBottom(); }, [messages, showTyping]);
   useEffect(() => { const h = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, []);
 
   const loadAgents = async () => { try { setAgents(await (await fetch('/api/agents')).json()); } catch (e) {} };
@@ -32,7 +32,7 @@ export default function ChatPage() {
   const refreshAgent = async (agentId) => { try { const d = await (await fetch(`/api/agents/${agentId}`)).json(); setAgents(prev => prev.map(a => a.id === agentId ? { ...a, ...d } : a)); } catch (e) {} };
 
   const selectAgent = async (agentId) => {
-    setActiveAgentId(agentId); setView('chat'); setStreamContent(''); await refreshAgent(agentId);
+    setActiveAgentId(agentId); setView('chat'); await refreshAgent(agentId);
     try { const conv = await (await fetch(`/api/chat/agent-session/${agentId}`)).json(); setConvId(conv.id); setMessages(await api.getChatHistory(conv.id)); } catch (e) {}
   };
 
@@ -42,26 +42,53 @@ export default function ChatPage() {
     const userMsg = { id: userMsgId, role: 'user', content: text, created_at: new Date().toISOString() };
     setMessages(prev => [...prev, userMsg]);
     setStreaming(true);
-    setStreamContent('');
+    setShowTyping(false);
+
+    const bubbleAccum = []; // accumulated bubbles displayed so far on client
+    let currentContent = '';
+    let currentBubbleId = `${userMsgId}_stream_0`;
+
     try {
       await api.sendMessage(convId, text,
-        (c) => setStreamContent(prev => prev + c),
+        (c) => {
+          currentContent += c;
+          // Update the streaming bubble in messages
+          setMessages(prev => {
+            const exists = prev.find(m => m.id === currentBubbleId);
+            if (exists) return prev.map(m => m.id === currentBubbleId ? { ...m, content: currentContent } : m);
+            return [...prev, { id: currentBubbleId, role: 'assistant', content: currentContent, created_at: new Date().toISOString(), _streaming: true }];
+          });
+        },
         (data) => {
           setStreaming(false);
-          setStreamContent('');
-          const segments = data.segments || [data.content || ''];
-          const ids = data.messageIds || [data.messageId];
-          const bubbles = segments.filter(s => s.trim()).map((seg, i) => ({
-            id: (ids[i] || `${userMsgId}_a_${i}`).toString(),
-            role: 'assistant', content: seg, created_at: new Date().toISOString(),
-          }));
-          setMessages(prev => [...prev, ...bubbles]);
+          setShowTyping(false);
+          // Remove streaming bubble and add final bubbles
+          setMessages(prev => {
+            let filtered = prev.filter(m => !m._streaming && m.id !== currentBubbleId);
+            const segments = data.segments || [data.content || currentContent || ''];
+            const ids = data.messageIds || [];
+            const finalBubbles = segments.filter(s => s.trim()).map((seg, i) => ({
+              id: (ids[i] || `${userMsgId}_final_${i}`).toString(),
+              role: 'assistant', content: seg, created_at: new Date().toISOString(),
+            }));
+            return [...filtered, ...finalBubbles];
+          });
           if (data.usage) setLastUsage({ prompt: data.usage.prompt || 0, completion: data.usage.completion || 0 });
         },
-        (e) => { setStreaming(false); setStreamContent(''); },
-        (u) => setLastUsage({ prompt: u.prompt || 0, completion: u.completion || 0 })
+        (e) => { setStreaming(false); setShowTyping(false); },
+        (u) => setLastUsage({ prompt: u.prompt || 0, completion: u.completion || 0 }),
+        () => {
+          // bubble_sep: commit current stream bubble, show typing, start next
+          if (currentContent.trim()) {
+            setMessages(prev => prev.map(m => m.id === currentBubbleId ? { ...m, _streaming: false, id: `${currentBubbleId}_done` } : m));
+            currentBubbleId = `${userMsgId}_stream_${Date.now()}`;
+          }
+          currentContent = '';
+          setShowTyping(true);
+          setTimeout(() => setShowTyping(false), 800 + Math.random() * 1200);
+        }
       );
-    } catch (e) { setStreaming(false); setStreamContent(''); }
+    } catch (e) { setStreaming(false); setShowTyping(false); }
   }, [convId]);
 
   const getTimeAgo = (d) => { if (!d) return ''; const diff = Math.floor((+new Date() - +new Date(d)) / 1000); if (diff < 60) return t('moments.justNow'); if (diff < 3600) return t('moments.minsAgo', { n: Math.floor(diff / 60) }); if (diff < 86400) return t('moments.hoursAgo', { n: Math.floor(diff / 3600) }); return t('moments.daysAgo', { n: Math.floor(diff / 86400) }); };
@@ -114,8 +141,7 @@ export default function ChatPage() {
       <div className="flex-1 overflow-y-auto py-4 chat-container">
         {messages.length === 0 && !streaming && <div className="text-center pt-20 text-sm" style={{ color: 'var(--text-muted)' }}>{t('chat.saySomething')}</div>}
         {messages.map(msg => <MessageBubble key={msg.id} message={msg} isUser={msg.role === 'user'} senderName={msg.role === 'user' ? userName : agentName} userPic={userProfile?.profile_pic || null} agentPic={agent?.profile_pic || null} />)}
-        {streaming && streamContent && <MessageBubble message={{ id: 'stream', role: 'assistant', content: streamContent, created_at: new Date().toISOString() }} isUser={false} senderName={agentName} agentPic={agent?.profile_pic || null} _streaming />}
-        {streaming && !streamContent && <div className="flex justify-start mb-3 px-4"><div className="typing-dots"><span /><span /><span /></div></div>}
+        {showTyping && <div className="flex justify-start mb-3 px-4"><div className="typing-dots"><span /><span /><span /></div></div>}
         <div ref={messagesEndRef} />
       </div>
       <InputBar onSend={handleSend} disabled={streaming} placeholder={t('chat.input')} />
