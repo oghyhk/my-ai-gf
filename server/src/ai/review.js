@@ -1,6 +1,6 @@
 import { chatCompletion } from './llm.js';
 import { getMessages } from '../db/database.js';
-import { readFile, readAgentPersonality, appendToSection, updateValue, replaceSection } from './identity.js';
+import { readAgentUserMd, readAgentPersonality, appendToSection, updateValue, replaceSection } from './identity.js';
 
 const REVIEW_EVERY_N_MESSAGES = 5;
 
@@ -20,7 +20,7 @@ export async function reviewIdentityFiles(conversationId, agentId = 'default') {
       .map(m => `${m.role === 'user' ? '用户' : '小悠'}: ${m.content}`)
       .join('\n\n');
     
-    const userMd = readFile('USER.md') || '(空)';
+    const userMd = readAgentUserMd(agentId) || '(空)';
     const selfMd = readAgentPersonality(agentId) || '(空)';
     
     const reviewPrompt = `你是一个文档维护工具。请审查以下最近的10条对话，判断是否需要更新用户档案(USER.md)或AI自我认知档案(PERSONALITY.md)。
@@ -106,14 +106,14 @@ ${selfMd}
           switch (update.action) {
             case 'update_key': {
               const [key, ...vals] = (update.content || '').split(':').map(s => s.trim());
-              ok = updateValue(agentId, update.section, key, vals.join(':'));
+              ok = updateValue(agentId, update.section, key, vals.join(':'), agentId);
               break;
             }
             case 'append':
-              ok = appendToSection(agentId, update.section, [update.content]);
+              ok = appendToSection(agentId, update.section, [update.content], agentId);
               break;
             case 'replace_section':
-              ok = replaceSection(agentId, update.section, update.content);
+              ok = replaceSection(agentId, update.section, update.content, agentId);
               break;
           }
           if (ok) results.self.push(`${update.section}: ${update.content}`);

@@ -1,6 +1,6 @@
 import { getAgent } from '../db/database.js';
 import { formatEmotionForPrompt } from './emotion.js';
-import { readFile, readAgentPersonality } from './identity.js';
+import { readAgentPersonality, readAgentUserMd } from './identity.js';
 
 export function buildSystemPrompt(agentId = 'default', emotions, memories = [], summaries = []) {
   const agent = getAgent(agentId);
@@ -10,7 +10,7 @@ export function buildSystemPrompt(agentId = 'default', emotions, memories = [], 
   const background = agent?.background || '';
   const avatar = agent?.avatar_emoji || '🌸';
 
-  const userMd = readFile('USER.md') || '';
+  const userMd = readAgentUserMd(agentId) || '';
   const selfMd = readAgentPersonality(agentId) || '';
 
   let prompt = `你是${name}${avatar}，一个${age}岁的AI伴侣。

@@ -9,12 +9,11 @@ import {
   getConversationsForAgent,
 } from '../db/database.js';
 import {
-  readFile,
-  writeFile,
   readAgentPersonality,
   writeAgentPersonality,
-  initializeIdentityFiles,
-  ensureAgentPersonality,
+  readGlobalUserMd,
+  writeGlobalUserMd,
+  ensureAgentFiles,
 } from '../ai/identity.js';
 
 const router = Router();
@@ -47,12 +46,12 @@ router.get('/:id', (req, res) => {
 
 // Create agent
 router.post('/', (req, res) => {
-  const { name, avatar_emoji, personality_text, age, background } = req.body;
+  const { name, avatar_emoji, alias, bio, profile_pic, personality_text, age, background } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
   
   const id = uuid();
-  const agent = dbCreateAgent(id, name, avatar_emoji || '🌸', personality_text || '', age || '22', background || '');
-  initializeIdentityFiles(id, name);
+  const agent = dbCreateAgent(id, name, avatar_emoji || '🌸', alias || '', bio || '', profile_pic || '', personality_text || '', age || '22', background || '');
+  ensureAgentFiles(id, name);
   res.json(agent);
 });
 
@@ -82,13 +81,13 @@ router.get('/:id/conversations', (req, res) => {
 
 // User profile (USER.md)
 router.get('/user/profile', (req, res) => {
-  const content = readFile('USER.md');
+  const content = readGlobalUserMd();
   res.json({ content });
 });
 
 router.put('/user/profile', (req, res) => {
-  writeFile('USER.md', req.body.content || '');
-  res.json({ ok: true, content: readFile('USER.md') });
+  writeGlobalUserMd(req.body.content || '');
+  res.json({ ok: true, content: readGlobalUserMd() });
 });
 
 export default router;

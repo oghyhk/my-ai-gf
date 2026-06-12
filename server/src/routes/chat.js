@@ -8,19 +8,18 @@ import {
   getOrCreateConversationForAgent,
   getAgent,
 } from '../db/database.js';
+import { executeTool } from '../ai/webtools.js';
+import { ensureAgentFiles } from '../ai/identity.js';
+import config from '../config.js';
 import { chatStream, chatCompletion } from '../ai/llm.js';
 import { buildSystemPrompt } from '../ai/personality.js';
 import { getCurrentEmotion, updateEmotionFromConversation } from '../ai/emotion.js';
 import { recallMemories, processConversationTurn } from '../ai/memory.js';
-import { executeTool } from '../ai/webtools.js';
-import { executeIdentityTool } from '../ai/llm.js';
-import { initializeIdentityFiles, ensureAgentPersonality } from '../ai/identity.js';
-import { reviewIdentityFiles } from '../ai/review.js';
-import config from '../config.js';
 
 const router = Router();
 
-initializeIdentityFiles();
+// Ensure default agent files exist
+ensureAgentFiles('default', '小悠');
 
 const upload = multer({
   dest: config.uploads.path,

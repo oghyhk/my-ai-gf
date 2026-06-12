@@ -6,7 +6,7 @@ const deepseek = new OpenAI({
   baseURL: config.deepseek.baseURL,
 });
 
-import { readFile as readIdentityFile, readAgentPersonality, writeAgentPersonality, appendToSection, updateValue, replaceSection } from './identity.js';
+import { readAgentUserMd, readAgentPersonality, appendToSection, updateValue, replaceSection } from './identity.js';
 
 // Tool definitions for function calling
 const TOOLS = [
@@ -128,43 +128,41 @@ export async function executeIdentityTool(name, args) {
   try {
     switch (name) {
       case 'read_user_info':
-        return readIdentityFile('USER.md');
+        return readAgentUserMd(agentId);
       case 'read_self_info':
         return readAgentPersonality(agentId);
       case 'update_user_info': {
         const { action, section, content } = args;
         switch (action) {
           case 'append':
-            appendToSection('USER.md', section, [content]);
-            return `已更新USER.md的"${section}"部分。`;
+            appendToSection(agentId, section, [content], agentId);
+            return `已更新 USER.md 的"${section}"`;
           case 'replace_section':
-            replaceSection('USER.md', section, content);
-            return `已替换USER.md的"${section}"部分。`;
+            replaceSection(agentId, section, content, agentId);
+            return `已替换 USER.md 的"${section}"`;
           case 'update_key': {
             const [key, ...vals] = content.split(':').map(s => s.trim());
-            updateValue('USER.md', section, key, vals.join(':'));
-            return `已更新USER.md中"${section}"的"${key}"。`;
+            updateValue(agentId, section, key, vals.join(':'), agentId);
+            return `已更新 USER.md 中"${section}"的"${key}"`;
           }
-          default:
-            return '未知操作';
+          default: return '未知操作';
         }
       }
       case 'update_self_info': {
         const { action, section, content } = args;
         switch (action) {
           case 'append':
-            appendToSection(agentId, section, [content]);
-            return `已更新PERSONALITY.md的"${section}"`;
+            appendToSection(agentId, section, [content], agentId);
+            return `已更新 PERSONALITY.md 的"${section}"`;
           case 'replace_section':
-            replaceSection(agentId, section, content);
-            return `已替换PERSONALITY.md的"${section}"`;
+            replaceSection(agentId, section, content, agentId);
+            return `已替换 PERSONALITY.md 的"${section}"`;
           case 'update_key': {
             const [key, ...vals] = content.split(':').map(s => s.trim());
-            updateValue(agentId, section, key, vals.join(':'));
-            return `已更新PERSONALITY.md中"${section}"的"${key}"`;
+            updateValue(agentId, section, key, vals.join(':'), agentId);
+            return `已更新 PERSONALITY.md 中"${section}"的"${key}"`;
           }
-          default:
-            return '未知操作';
+          default: return '未知操作';
         }
       }
       default:
