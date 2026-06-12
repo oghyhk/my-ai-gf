@@ -158,7 +158,7 @@ body::before {
   background: var(--user-bubble);
   color: var(--user-bubble-text);
   border-radius: var(--radius-md) 4px var(--radius-md) var(--radius-md);
-  box-shadow: 0 1px 4px var(--primary-glow);
+  box-shadow: 0 2px 6px var(--primary-glow);
 }
 
 .message-bubble.ai {
