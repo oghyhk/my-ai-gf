@@ -181,6 +181,8 @@ export default function ChatPage() {
             message={msg}
             isUser={msg.role === 'user'}
             senderName={msg.role === 'user' ? userName : agentName}
+            userPic={userProfile?.profile_pic || null}
+            agentPic={agent?.profile_pic || null}
           />
         ))}
         {streaming && lastAssistantMsg?.content === '' && (

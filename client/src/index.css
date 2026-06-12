@@ -157,16 +157,15 @@ body::before {
 .message-bubble.user {
   background: var(--user-bubble);
   color: var(--user-bubble-text);
-  border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);
-  box-shadow: 0 2px 8px var(--primary-glow);
-  margin-left: auto;
+  border-radius: var(--radius-md) 4px var(--radius-md) var(--radius-md);
+  box-shadow: 0 1px 4px var(--primary-glow);
 }
 
 .message-bubble.ai {
   background: var(--ai-bubble);
   color: var(--ai-bubble-text);
   border: 1px solid var(--ai-bubble-border);
-  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px;
+  border-radius: 4px var(--radius-md) var(--radius-md) var(--radius-md);
   box-shadow: var(--shadow-sm);
 }
 
