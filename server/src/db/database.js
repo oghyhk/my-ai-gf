@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { v4 as uuidv4 } from 'uuid';
 import config from '../config.js';
 import { encrypt, decrypt } from './crypto.js';
 
@@ -524,7 +525,7 @@ export function getOrCreateConversationForAgent(agentId) {
     `SELECT * FROM conversations WHERE agent_id = ? ORDER BY created_at ASC LIMIT 1`
   ).get(agentId);
   if (!conv) {
-    const id = require('uuid').v4();
+    const id = uuidv4();
     createConversation(id, '', agentId);
     conv = d.prepare(`SELECT * FROM conversations WHERE id = ?`).get(id);
   }
