@@ -24,14 +24,24 @@ export function getDb() {
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   db.exec(schema);
   
-  // Migration: add agent_id to conversations if old table lacks it
+  // Migration: ensure conversations has agent_id column
   try {
     const cols = db.pragma("table_info(conversations)").map(c => c.name);
     if (!cols.includes('agent_id')) {
-      db.exec("ALTER TABLE conversations ADD COLUMN agent_id TEXT NOT NULL DEFAULT 'default'");
+      // Can't ALTER to add NOT NULL REFERENCES — recreate the table
+      db.exec("DROP TABLE IF EXISTS conversations");
+      db.exec(`
+        CREATE TABLE conversations (
+          id TEXT PRIMARY KEY,
+          agent_id TEXT NOT NULL DEFAULT 'default' REFERENCES agents(id) ON DELETE CASCADE,
+          title TEXT DEFAULT '',
+          created_at DATETIME DEFAULT (datetime('now')),
+          updated_at DATETIME DEFAULT (datetime('now'))
+        )
+      `);
     }
   } catch (e) {
-    // Column already exists or other error — ignore
+    console.error('Migration error (non-fatal):', e.message);
   }
   
   return db;
