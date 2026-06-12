@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useTheme } from '../context/ThemeContext';
+import * as api from '../api/client';
 import MessageBubble from '../components/MessageBubble';
 import InputBar from '../components/InputBar';
-import RelationshipBadge from '../components/RelationshipBadge';
-import * as api from '../api/client';
 
 export default function ChatPage() {
-  const { theme, toggleTheme } = useTheme();
   const [conversations, setConversations] = useState([]);
   const [activeConvId, setActiveConvId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -54,40 +51,25 @@ export default function ChatPage() {
     } catch (e) { console.error(e); setStreaming(false); }
   }, [activeConvId]);
 
-  const handleExport = async () => {
-    if (!activeConvId) return;
-    const data = await api.exportConversation(activeConvId);
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = `chat-${activeConvId}.json`; a.click();
-  };
-
   if (showConvList) {
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full" style={{ background: 'var(--bg-deep)' }}>
         <div className="app-header">
           <h1 className="font-heading text-lg font-bold" style={{ color: 'var(--text-primary)' }}>聊天</h1>
-          <div className="flex gap-2">
-            <button onClick={toggleTheme} className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'var(--bg-input)' }}>
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </button>
-            <button onClick={createNewConversation} className="w-9 h-9 rounded-lg flex items-center justify-center text-lg" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>
-              +
-            </button>
-          </div>
+          <button onClick={createNewConversation} className="w-9 h-9 rounded-lg flex items-center justify-center text-xl" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>+</button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
-            <div className="text-center py-20" style={{ color: 'var(--text-muted)' }}>开始一个新对话吧 💬</div>
+            <div className="text-center pt-20 text-sm" style={{ color: 'var(--text-muted)' }}>开始一个新对话吧</div>
           ) : (
             conversations.map(conv => (
-              <div key={conv.id} onClick={() => selectConversation(conv.id)} className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+              <div key={conv.id} onClick={() => selectConversation(conv.id)} className="flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors hover:brightness-110" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0" style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))' }}>AI</div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{conv.title || 'AI Companion'}</div>
-                  <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{conv.last_message?.substring(0, 30) || '暂无消息'}</div>
+                  <div className="font-medium text-[15px] truncate" style={{ color: 'var(--text-primary)' }}>{conv.title || 'AI Companion'}</div>
+                  <div className="text-[13px] truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>{conv.last_message?.substring(0, 30) || '暂无消息'}</div>
                 </div>
-                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{conv.message_count || 0}条</div>
+                <div className="text-xs mr-1" style={{ color: 'var(--text-muted)' }}>{conv.message_count || 0}</div>
               </div>
             ))
           )}
@@ -99,31 +81,22 @@ export default function ChatPage() {
   const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" style={{ background: 'var(--bg-deep)' }}>
       <div className="app-header">
-        <button onClick={() => setShowConvList(true)} className="text-2xl leading-none mr-2" style={{ color: 'var(--text-secondary)' }}>‹</button>
+        <button onClick={() => setShowConvList(true)} className="text-2xl leading-none mr-2 w-8 h-8 rounded-lg flex items-center justify-center" style={{ color: 'var(--text-secondary)' }}>‹</button>
         <h1 className="font-heading text-base font-bold flex-1" style={{ color: 'var(--text-primary)' }}>AI Companion</h1>
-        <div className="flex gap-2">
-          <button onClick={toggleTheme} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--bg-input)' }}>
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
-          <button onClick={handleExport} className="text-xs" style={{ color: 'var(--text-muted)' }}>导出</button>
-        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto py-4 chat-container">
-        <div className="px-4 mb-4"><RelationshipBadge /></div>
         {messages.length === 0 && (
-          <div className="text-center py-20" style={{ color: 'var(--text-muted)' }}>说点什么开始聊天吧 👋</div>
+          <div className="text-center pt-20 text-sm" style={{ color: 'var(--text-muted)' }}>说点什么开始聊天吧</div>
         )}
         {messages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} isUser={msg.role === 'user'} />
         ))}
         {streaming && lastAssistantMsg?.content === '' && (
           <div className="flex justify-start mb-3 px-4">
-            <div className="typing-dots">
-              <span /><span /><span />
-            </div>
+            <div className="typing-dots"><span /><span /><span /></div>
           </div>
         )}
         <div ref={messagesEndRef} />
