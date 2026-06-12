@@ -2,7 +2,7 @@ import { chatCompletion } from './llm.js';
 import { getMessages } from '../db/database.js';
 import { readFile, writeFile, appendToSection, updateValue, replaceSection } from './identity.js';
 
-const REVIEW_EVERY_N_MESSAGES = 10;
+const REVIEW_EVERY_N_MESSAGES = 5;
 
 let messageCounter = 0;
 

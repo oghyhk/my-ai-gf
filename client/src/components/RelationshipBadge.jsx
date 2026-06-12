@@ -1,26 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Calendar } from 'lucide-react';
 
 export default function RelationshipBadge() {
   const [relationship, setRelationship] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchRelationship();
-  }, []);
+  useEffect(() => { fetchRelationship(); }, []);
 
   const fetchRelationship = async () => {
     try {
       const res = await fetch('/api/relationship');
-      if (res.ok) {
-        const data = await res.json();
-        setRelationship(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch relationship:', error);
-    } finally {
-      setLoading(false);
-    }
+      if (res.ok) setRelationship(await res.json());
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   };
 
   if (loading || !relationship) return null;
@@ -29,40 +20,25 @@ export default function RelationshipBadge() {
   const levelName = levelNames[Math.min(relationship.level - 1, levelNames.length - 1)] || '挚友';
 
   return (
-    <div className="bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg p-3 mb-4 border border-pink-200">
-      <div className="flex items-center justify-between mb-2">
+    <div className="card p-3" style={{ borderColor: 'var(--border-default)' }}>
+      <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-2">
-          <Heart size={16} className="text-pink-500 fill-pink-500" />
-          <span className="text-sm font-medium text-gray-700">
+          <span style={{ color: 'var(--accent)' }}>💛</span>
+          <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
             {levelName} · Lv.{relationship.level}
           </span>
         </div>
-        <div className="flex items-center gap-3 text-xs text-gray-500">
-          <span className="flex items-center gap-1">
-            <MessageCircle size={12} />
-            {relationship.total_messages}
-          </span>
-          <span className="flex items-center gap-1">
-            <Calendar size={12} />
-            {relationship.total_days}天
-          </span>
+        <div className="flex items-center gap-3 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          <span>{relationship.total_messages}条</span>
+          <span>{relationship.total_days}天</span>
         </div>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-1.5">
-        <div
-          className="bg-gradient-to-r from-pink-500 to-purple-500 h-1.5 rounded-full transition-all"
-          style={{ width: `${relationship.progress_to_next * 100}%` }}
-        />
+      <div className="w-full rounded-full h-1" style={{ background: 'var(--border-strong)' }}>
+        <div className="h-1 rounded-full transition-all" style={{
+          width: `${(relationship.progress_to_next || 0) * 100}%`,
+          background: 'linear-gradient(90deg, var(--primary), var(--secondary))',
+        }} />
       </div>
-      {relationship.milestones && relationship.milestones.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {relationship.milestones.slice(-3).map((m, i) => (
-            <span key={i} className="text-xs px-2 py-0.5 bg-white rounded-full text-gray-600">
-              {m.title}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

@@ -1,13 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useTheme } from '../context/ThemeContext';
 import * as api from '../api/client';
 
 export default function SettingsPage() {
+  const { theme, toggleTheme, bgImage, setBackground, removeBackground } = useTheme();
   const [personality, setPersonality] = useState(null);
   const [agentStatus, setAgentStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateLog, setUpdateLog] = useState('');
+  const [bgUploading, setBgUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     loadData();
@@ -63,158 +67,199 @@ export default function SettingsPage() {
     }
   };
 
-  const emotionLabels = {
-    happiness: '开心',
-    sadness: '难过',
-    anger: '生气',
-    surprise: '惊讶',
-    fear: '害怕',
-    disgust: '厌恶',
-    affection: '好感',
-    curiosity: '好奇',
+  const handleBgUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setBgUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch('/api/moments/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.urls?.length > 0) {
+        setBackground(data.urls[0]);
+      }
+    } catch (error) {
+      console.error('Background upload failed:', error);
+    } finally {
+      setBgUploading(false);
+      e.target.value = '';
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col h-full bg-wechat-bg">
-        <div className="bg-white px-4 py-3 text-center font-medium text-gray-900 shadow-sm border-b border-gray-200">
-          设置
-        </div>
-        <div className="text-center text-gray-400 mt-20">加载中...</div>
-      </div>
-    );
-  }
+  const emotionLabels = {
+    happiness: '开心', sadness: '难过', anger: '生气', surprise: '惊讶',
+    fear: '害怕', disgust: '厌恶', affection: '好感', curiosity: '好奇',
+  };
 
   return (
-    <div className="flex flex-col h-full bg-wechat-bg">
-      <div className="bg-white px-4 py-3 text-center font-medium text-gray-900 shadow-sm border-b border-gray-200">
-        设置
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="app-header">
+        <h1 className="text-lg font-heading font-bold" style={{ color: 'var(--text-primary)' }}>设置</h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        {/* Agent Status */}
-        {agentStatus && (
-          <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-            <h2 className="font-medium text-gray-900 text-lg mb-3">AI 状态</h2>
-            <div className="mb-3">
-              <span className="text-gray-600">名字: </span>
-              <span className="font-medium">{agentStatus.name}</span>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+
+        {/* Appearance */}
+        <div className="card p-4">
+          <h2 className="font-heading text-base font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+            外观
+          </h2>
+
+          {/* Theme Toggle */}
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="text-sm" style={{ color: 'var(--text-primary)' }}>深色模式</div>
+              <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {theme === 'dark' ? '当前：深色' : '当前：浅色'}
+              </div>
             </div>
-            <h3 className="font-medium text-gray-700 text-sm mb-2">情绪状态</h3>
+            <button
+              onClick={toggleTheme}
+              className="relative w-14 h-7 rounded-full transition-colors"
+              style={{ background: theme === 'dark' ? 'var(--primary)' : 'var(--border-strong)' }}
+            >
+              <div
+                className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform flex items-center justify-center"
+                style={{ transform: theme === 'dark' ? 'translateX(28px)' : 'translateX(2px)' }}
+              >
+                <span className="text-xs">{theme === 'dark' ? '🌙' : '☀️'}</span>
+              </div>
+            </button>
+          </div>
+
+          {/* Background Image */}
+          <div>
+            <div className="text-sm mb-2" style={{ color: 'var(--text-primary)' }}>背景图片</div>
+            {bgImage ? (
+              <div className="flex items-center gap-3">
+                <img src={bgImage} alt="background" className="w-20 h-12 object-cover rounded-lg border" style={{ borderColor: 'var(--border-default)' }} />
+                <div className="flex gap-2">
+                  <button onClick={() => fileInputRef.current?.click()} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-surface-input border" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-strong)' }}>
+                    更换
+                  </button>
+                  <button onClick={removeBackground} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ color: '#EF4444', background: 'rgba(239,68,68,0.1)' }}>
+                    移除
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={bgUploading}
+                className="w-full py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 border border-dashed transition-colors"
+                style={{ color: 'var(--text-muted)', borderColor: 'var(--border-strong)' }}
+              >
+                {bgUploading ? '上传中...' : '📷 选择背景图片'}
+              </button>
+            )}
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleBgUpload} className="hidden" />
+          </div>
+        </div>
+
+        {/* AI Status */}
+        {agentStatus && (
+          <div className="card p-4">
+            <h2 className="font-heading text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+              AI 状态
+            </h2>
+            <div className="mb-2">
+              <span style={{ color: 'var(--text-secondary)' }}>名字: </span>
+              <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{agentStatus.name}</span>
+            </div>
+            <div className="text-sm mb-2" style={{ color: 'var(--text-secondary)' }}>情绪状态</div>
             <div className="grid grid-cols-2 gap-2">
               {Object.entries(agentStatus.emotions || {}).map(([key, value]) => (
                 <div key={key} className="flex items-center gap-2">
-                  <span className="text-xs text-gray-600 w-16">
-                    {emotionLabels[key] || key}
-                  </span>
-                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <span className="text-xs w-14" style={{ color: 'var(--text-muted)' }}>{emotionLabels[key] || key}</span>
+                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border-strong)' }}>
                     <div
-                      className="h-full bg-wechat-green rounded-full transition-all"
-                      style={{ width: `${(value * 100).toFixed(0)}%` }}
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${(value * 100).toFixed(0)}%`,
+                        background: 'linear-gradient(90deg, var(--primary), var(--secondary))',
+                      }}
                     />
                   </div>
-                  <span className="text-xs text-gray-500 w-8 text-right">
-                    {(value * 100).toFixed(0)}%
-                  </span>
+                  <span className="text-xs w-8 text-right" style={{ color: 'var(--text-muted)' }}>{(value * 100).toFixed(0)}%</span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Personality Settings */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <h2 className="font-medium text-gray-900 text-lg mb-3">AI 人格设置</h2>
-
-          <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              名字
-            </label>
-            <input
-              type="text"
-              value={personality?.name || ''}
-              onChange={(e) => setPersonality({ ...personality, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-wechat-green"
-            />
-          </div>
-
-          <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              年龄
-            </label>
-            <input
-              type="text"
-              value={personality?.age || ''}
-              onChange={(e) => setPersonality({ ...personality, age: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-wechat-green"
-            />
-          </div>
-
-          <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              人格描述
-            </label>
-            <textarea
-              value={personality?.personality || ''}
-              onChange={(e) => setPersonality({ ...personality, personality: e.target.value })}
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-wechat-green resize-none"
-              placeholder="描述 AI 的性格特点、说话风格..."
-            />
-          </div>
-
-          <div className="mb-3">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              背景故事
-            </label>
-            <textarea
-              value={personality?.background || ''}
-              onChange={(e) => setPersonality({ ...personality, background: e.target.value })}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-wechat-green resize-none"
-              placeholder="AI 的背景故事..."
-            />
-          </div>
-
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full py-2 bg-wechat-green text-white rounded-lg font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
-          >
+        {/* Personality */}
+        <div className="card p-4">
+          <h2 className="font-heading text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+            AI 人格设置
+          </h2>
+          {[
+            { key: 'name', label: '名字', placeholder: '' },
+            { key: 'age', label: '年龄', placeholder: '' },
+          ].map(({ key, label, placeholder }) => (
+            <div key={key} className="mb-3">
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+              <input
+                type="text"
+                value={personality?.[key] || ''}
+                onChange={e => setPersonality({ ...personality, [key]: e.target.value })}
+                className="input-field"
+                placeholder={placeholder}
+              />
+            </div>
+          ))}
+          {[
+            { key: 'personality', label: '人格描述', rows: 3, placeholder: '描述 AI 的性格特点、说话风格...' },
+            { key: 'background', label: '背景故事', rows: 2, placeholder: 'AI 的背景故事...' },
+          ].map(({ key, label, rows, placeholder }) => (
+            <div key={key} className="mb-3">
+              <label className="block text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+              <textarea
+                value={personality?.[key] || ''}
+                onChange={e => setPersonality({ ...personality, [key]: e.target.value })}
+                rows={rows}
+                className="input-field"
+                style={{ borderRadius: 'var(--radius-md)', resize: 'none', height: 'auto' }}
+                placeholder={placeholder}
+              />
+            </div>
+          ))}
+          <button onClick={handleSave} disabled={saving} className="btn btn-primary w-full">
             {saving ? '保存中...' : '保存设置'}
           </button>
         </div>
 
         {/* Update */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <h2 className="font-medium text-gray-900 text-lg mb-3">应用更新</h2>
-          <p className="text-sm text-gray-600 mb-3">
-            从 GitHub 获取最新代码并自动重新构建前端。
+        <div className="card p-4">
+          <h2 className="font-heading text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+            应用更新
+          </h2>
+          <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+            从 GitHub 获取最新代码并自动重新构建
           </p>
-          <button
-            onClick={handleUpdate}
-            disabled={updating}
-            className="w-full py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:opacity-50 mb-2"
-          >
+          <button onClick={handleUpdate} disabled={updating} className="btn btn-accent w-full mb-2">
             {updating ? '更新中...' : '🔄 检查并更新'}
           </button>
           {updateLog && (
-            <pre className="bg-gray-900 text-green-400 text-xs p-3 rounded-lg overflow-x-auto max-h-48 overflow-y-auto font-mono">
+            <pre className="p-3 rounded-lg overflow-x-auto max-h-48 overflow-y-auto text-xs font-mono" style={{ background: 'var(--bg-deep)', color: '#A3E635' }}>
               {updateLog}
             </pre>
           )}
         </div>
 
         {/* About */}
-        <div className="bg-white rounded-lg shadow-sm p-4">
-          <h2 className="font-medium text-gray-900 text-lg mb-3">关于</h2>
-          <div className="text-sm text-gray-600 space-y-1">
-            <p>AI Companion v1.0.0</p>
-            <p>基于 DeepSeek + Mimo 构建</p>
-            <p>三层混合记忆系统 (FTS5 + Vector + Entity)</p>
-            <p>动态情感引擎 + RRF 融合召回</p>
+        <div className="card p-4">
+          <h2 className="font-heading text-base font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
+            关于
+          </h2>
+          <div className="text-xs space-y-1" style={{ color: 'var(--text-muted)' }}>
+            <p>AI Companion v1.1</p>
+            <p>深色主题 · 自定义背景</p>
+            <p>基于 DeepSeek + Mimo · UI/UX Pro Max</p>
           </div>
         </div>
+
       </div>
     </div>
   );
