@@ -8,34 +8,30 @@ export default function MessageBubble({ message, isUser, senderName, userPic, ag
   };
 
   const pic = isUser ? userPic : agentPic;
-  const fallbackEmoji = isUser ? '我' : 'AI';
+  const fallbackLabel = isUser ? '我' : 'AI';
   const fallbackGradient = isUser
     ? 'linear-gradient(135deg, #6366F1, #8B5CF6)'
     : 'linear-gradient(135deg, #8B5CF6, #EC4899)';
 
-  const bubbleSide = isUser ? 'flex-row-reverse' : 'flex-row';
-  const textAlign = isUser ? 'items-end' : 'items-start';
-
   return (
-    <div className={`mb-2 px-3 flex flex-col ${textAlign}`}>
-      <div className={`flex items-start gap-2 ${bubbleSide}`}>
+    <div className="mb-2 px-3">
+      <div className={`flex items-start gap-2 ${isUser ? 'flex-row-reverse' : ''}`}>
         {pic ? (
           <img src={pic} alt="" className="w-9 h-9 rounded-md object-cover flex-shrink-0 mt-0.5" />
         ) : (
-          <div className="w-9 h-9 rounded-md flex-shrink-0 flex items-center justify-center text-white text-sm font-bold mt-0.5" style={{ background: fallbackGradient }}>
-            {fallbackEmoji}
+          <div className="w-9 h-9 rounded-md flex-shrink-0 flex items-center justify-center text-white text-xs font-bold mt-0.5" style={{ background: fallbackGradient }}>
+            {fallbackLabel}
           </div>
         )}
-        <div className="min-w-0 max-w-[72%]">
-          <div className={`text-[11px] mb-0.5 ${isUser ? 'text-right mr-1' : 'text-left ml-1'}`} style={{ color: 'var(--text-muted)' }}>
-            {senderName || fallbackEmoji}
+        <div className={`min-w-0 ${isUser ? 'flex flex-col items-end' : 'flex flex-col items-start'}`}>
+          <div className="text-[11px] mb-0.5 px-1" style={{ color: 'var(--text-muted)' }}>
+            {senderName || fallbackLabel}
           </div>
-          <div className={`message-bubble px-3 py-2.5 ${isUser ? 'user' : 'ai'}`}>
-            {message.content || '...'}
+          <div className={`message-bubble px-3 py-2.5 ${isUser ? 'user' : 'ai'}`} style={{ maxWidth: '100%' }}>
+            {message.content || ''}
           </div>
         </div>
       </div>
     </div>
   );
 }
-
