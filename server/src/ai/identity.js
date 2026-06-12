@@ -1,9 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import config from '../config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const USER_DIR = path.join(__dirname, '..', '..', 'data', 'user');
+const USER_DIR = path.resolve(config.data.path, 'user');
 
 function ensureDir(dir) { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); }
 function ensureUserDir() { ensureDir(USER_DIR); }

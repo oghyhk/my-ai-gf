@@ -13,8 +13,8 @@ let db;
 export function getDb() {
   if (db) return db;
   
-  const dataDir = path.dirname(config.db.path);
-  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  const dataDir = path.join(config.db.path, '..');
+  if (dataDir && !fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
   
   db = new Database(config.db.path);
   db.pragma('journal_mode = WAL');

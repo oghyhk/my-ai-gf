@@ -23,3 +23,4 @@ _key.py
 _check.py
 _finalize.py
 .commit_msg.txt
+vector-service/venv/

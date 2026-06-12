@@ -35,10 +35,16 @@ export default {
   },
   
   db: {
-    path: join(__dirname, '../data/companion.db'),
+    path: process.env.DB_PATH || join(__dirname, '../../data/companion.db'),
+  },
+  
+  data: {
+    path: process.env.DATA_DIR || join(__dirname, '../../data'),
   },
   
   uploads: {
-    path: join(__dirname, '../uploads'),
+    path: process.env.UPLOADS_DIR || process.env.DATA_DIR 
+      ? join(process.env.DATA_DIR || join(__dirname, '../../data'), 'uploads')
+      : join(__dirname, '../uploads'),
   },
 };

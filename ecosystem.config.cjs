@@ -1,4 +1,7 @@
 const path = require('path');
+const os = require('os');
+
+const DATA_DIR = path.join(os.homedir(), 'ai-gf-data');
 
 module.exports = {
   apps: [
@@ -8,6 +11,8 @@ module.exports = {
       cwd: path.join(__dirname, 'server'),
       env: {
         NODE_ENV: 'production',
+        DB_PATH: path.join(DATA_DIR, 'companion.db'),
+        DATA_DIR: DATA_DIR,
       },
       max_memory_restart: '500M',
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
