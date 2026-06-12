@@ -518,6 +518,19 @@ export function getConversation(id) {
   return row;
 }
 
+export function getOrCreateConversationForAgent(agentId) {
+  const d = getDb();
+  let conv = d.prepare(
+    `SELECT * FROM conversations WHERE agent_id = ? ORDER BY created_at ASC LIMIT 1`
+  ).get(agentId);
+  if (!conv) {
+    const id = require('uuid').v4();
+    createConversation(id, '', agentId);
+    conv = d.prepare(`SELECT * FROM conversations WHERE id = ?`).get(id);
+  }
+  return conv;
+}
+
 // ============ USER PROFILE ============
 
 export function getUserProfile() {

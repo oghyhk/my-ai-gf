@@ -5,6 +5,7 @@ import path from 'path';
 import {
   createConversation, getConversations, deleteConversation,
   insertMessage, getMessages, updateConversationTime, getConversation,
+  getOrCreateConversationForAgent,
   getAgent,
 } from '../db/database.js';
 import { chatStream, chatCompletion } from '../ai/llm.js';
@@ -54,6 +55,12 @@ router.post('/conversations', (req, res) => {
 router.delete('/conversations/:id', (req, res) => {
   deleteConversation(req.params.id);
   res.json({ ok: true });
+});
+
+// Get or create agent's single conversation  
+router.get('/agent-session/:agentId', (req, res) => {
+  const conv = getOrCreateConversationForAgent(req.params.agentId);
+  res.json(conv);
 });
 
 // Get chat history

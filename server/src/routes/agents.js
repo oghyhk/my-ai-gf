@@ -29,6 +29,7 @@ router.get('/', (req, res) => {
     return {
       ...a,
       session_count: convs.length,
+      total_messages: convs.reduce((sum, c) => sum + (c.message_count || 0), 0),
       last_active: lastMsg,
       avatar_emoji: a.avatar_emoji || '🌸',
     };
