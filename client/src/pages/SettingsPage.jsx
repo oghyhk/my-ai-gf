@@ -13,7 +13,9 @@ export default function SettingsPage() {
   const [userSaving, setUserSaving] = useState(false);
   const [userProfile, setUserProfile] = useState({ alias: '', bio: '', profile_pic: '' });
   const [userProfileSaving, setUserProfileSaving] = useState(false);
+  const [userProfileChanged, setUserProfileChanged] = useState(false);
   const picInputRef = useRef(null);
+  const saveTimerRef = useRef(null);
 
   // Agents
   const [agents, setAgents] = useState([]);
@@ -57,7 +59,13 @@ export default function SettingsPage() {
     try {
       const r = await fetch('/api/profiles/upload-pic', { method: 'POST', body: fd });
       const d = await r.json();
-      if (d.url) setUserProfile(prev => ({ ...prev, profile_pic: d.url }));
+      if (d.url) {
+        setUserProfile(prev => {
+          const updated = { ...prev, profile_pic: d.url };
+          fetch('/api/profiles/me', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updated) }).catch(() => {});
+          return updated;
+        });
+      }
     } catch (e) { console.error(e); }
     e.target.value = '';
   };
@@ -220,8 +228,8 @@ export default function SettingsPage() {
                 <div key={k} className="mb-3">
                   <div className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>{l}</div>
                   {ta
-                    ? <textarea value={userProfile[k]} onChange={e => setUserProfile(prev => ({ ...prev, [k]: e.target.value }))} rows={2} placeholder={ph} style={{ ...istyle, resize: 'none' }} />
-                    : <input value={userProfile[k]} onChange={e => setUserProfile(prev => ({ ...prev, [k]: e.target.value }))} placeholder={ph} style={istyle} />
+                    ? <textarea value={userProfile[k]} onChange={e => autoSaveUserProfile({ ...userProfile, [k]: e.target.value })} rows={2} placeholder={ph} style={{ ...istyle, resize: 'none' }} />
+                    : <input value={userProfile[k]} onChange={e => autoSaveUserProfile({ ...userProfile, [k]: e.target.value })} placeholder={ph} style={istyle} />
                   }
                 </div>
               ))}
