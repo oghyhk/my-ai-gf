@@ -27,13 +27,17 @@ export default function InputBar({ onSend, disabled }) {
           placeholder="输入消息..."
           disabled={disabled}
           rows={1}
-          className="flex-1 px-5 py-3 text-sm rounded-full resize-none outline-none transition-all"
+          className="flex-1 px-5 py-3 rounded-full resize-none outline-none transition-all font-body"
           style={{
             background: 'var(--bg-input)',
             color: 'var(--text-primary)',
             border: '1px solid var(--border-default)',
-            minHeight: '44px',
+            minHeight: '46px',
             maxHeight: '100px',
+            lineHeight: '1.4',
+            fontSize: '15px',
+            letterSpacing: '0.01em',
+            caretColor: 'var(--secondary)',
           }}
         />
         <button
