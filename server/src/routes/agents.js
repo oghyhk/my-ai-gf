@@ -7,6 +7,9 @@ import {
   updateAgent,
   deleteAgent,
   getConversationsForAgent,
+  getAllMemoryFragments,
+  deleteMemoryFragment,
+  updateMemoryFragment,
 } from '../db/database.js';
 import {
   readAgentPersonality,
@@ -21,7 +24,6 @@ const router = Router();
 // Get all agents
 router.get('/', (req, res) => {
   const agents = getAgents();
-  // For each agent, attach last session time
   const enriched = agents.map(a => {
     const convs = getConversationsForAgent(a.id);
     const lastMsg = convs.length > 0 ? convs[0].updated_at : null;
@@ -41,14 +43,14 @@ router.get('/:id', (req, res) => {
   const agent = getAgent(req.params.id);
   if (!agent) return res.status(404).json({ error: 'Agent not found' });
   const personality = readAgentPersonality(agent.id);
-  res.json({ ...agent, personality_md: personality });
+  const userMd = readAgentUserMd(agent.id);
+  res.json({ ...agent, personality_md: personality, user_md: userMd });
 });
 
 // Create agent
 router.post('/', (req, res) => {
   const { name, avatar_emoji, alias, bio, profile_pic, personality_text, age, background } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
-  
   const id = uuid();
   const agent = dbCreateAgent(id, name, avatar_emoji || '🌸', alias || '', bio || '', profile_pic || '', personality_text || '', age || '22', background || '');
   ensureAgentFiles(id, name);
@@ -62,7 +64,10 @@ router.put('/:id', (req, res) => {
   if (req.body.personality_md) {
     writeAgentPersonality(req.params.id, req.body.personality_md);
   }
-  res.json({ ...agent, personality_md: readAgentPersonality(req.params.id) });
+  if (req.body.user_md !== undefined) {
+    writeAgentUserMd(req.params.id, req.body.user_md);
+  }
+  res.json({ ...agent, personality_md: readAgentPersonality(req.params.id), user_md: readAgentUserMd(req.params.id) });
 });
 
 // Delete agent
@@ -77,6 +82,24 @@ router.delete('/:id', (req, res) => {
 router.get('/:id/conversations', (req, res) => {
   const convs = getConversationsForAgent(req.params.id);
   res.json(convs);
+});
+
+// Get agent's memory fragments
+router.get('/:id/memories', (req, res) => {
+  const memories = getAllMemoryFragments(req.params.id, 200);
+  res.json(memories);
+});
+
+// Delete memory fragment
+router.delete('/:id/memories/:memId', (req, res) => {
+  deleteMemoryFragment(req.params.memId);
+  res.json({ ok: true });
+});
+
+// Update memory fragment
+router.put('/:id/memories/:memId', (req, res) => {
+  updateMemoryFragment(req.params.memId, req.body);
+  res.json({ ok: true });
 });
 
 // User profile (global USER.md — for settings page)

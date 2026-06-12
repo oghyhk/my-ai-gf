@@ -205,6 +205,39 @@ export function getMemoryFragments(conversationId, limit = 50) {
   }));
 }
 
+export function getAllMemoryFragments(agentId, limit = 100) {
+  const d = getDb();
+  return d.prepare(
+    `SELECT mf.* FROM memory_fragments mf
+     JOIN conversations c ON c.id = mf.conversation_id
+     WHERE c.agent_id = ?
+     ORDER BY mf.created_at DESC LIMIT ?`
+  ).all(agentId, limit).map(row => ({
+    ...row,
+    entities: JSON.parse(row.entities || '[]'),
+  }));
+}
+
+export function deleteMemoryFragment(id) {
+  const d = getDb();
+  d.prepare(`DELETE FROM memory_fragments WHERE id = ?`).run(id);
+}
+
+export function updateMemoryFragment(id, updates) {
+  const d = getDb();
+  const fields = [];
+  const values = [];
+  for (const [k, v] of Object.entries(updates)) {
+    if (['type', 'content', 'entities'].includes(k)) {
+      fields.push(`${k} = ?`);
+      values.push(k === 'entities' ? JSON.stringify(v) : v);
+    }
+  }
+  if (fields.length === 0) return;
+  values.push(id);
+  d.prepare(`UPDATE memory_fragments SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+}
+
 export function searchMemoryFTS(query, limit = 20) {
   const d = getDb();
   try {
