@@ -143,11 +143,15 @@ body::before {
 .message-bubble {
   max-width: 80%;
   word-wrap: break-word;
+  word-break: normal;
+  overflow-wrap: break-word;
   white-space: pre-wrap;
   line-height: 1.6;
   font-size: 15px;
   letter-spacing: 0.01em;
   transition: all var(--transition-fast);
+  -webkit-hyphens: none;
+  hyphens: none;
 }
 
 .message-bubble.user {
