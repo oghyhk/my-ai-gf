@@ -33,5 +33,15 @@ module.exports = {
       error_file: path.join(__dirname, 'logs', 'vector-error.log'),
       out_file: path.join(__dirname, 'logs', 'vector-out.log'),
     },
+    {
+      name: 'cloudflared-tunnel',
+      script: 'cloudflared',
+      args: 'tunnel --url http://localhost:3000 --no-autoupdate',
+      interpreter: 'none',
+      max_restarts: 10,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      error_file: path.join(__dirname, 'logs', 'tunnel-error.log'),
+      out_file: path.join(__dirname, 'logs', 'tunnel-out.log'),
+    },
   ],
 };
