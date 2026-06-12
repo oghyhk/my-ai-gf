@@ -14,3 +14,12 @@ venv/
 chroma_data/
 .DS_Store
 *.log
+*.apk
+_push.py
+_deploy.py
+_deploy2.py
+_ssh.py
+_key.py
+_check.py
+_finalize.py
+.commit_msg.txt

@@ -1,5 +1,6 @@
 import { getAllAgentConfig, setAgentConfig } from '../db/database.js';
 import { formatEmotionForPrompt } from './emotion.js';
+import { readFile } from './identity.js';
 
 export function buildSystemPrompt(emotions, memories = [], summaries = []) {
   const config = getAllAgentConfig();
@@ -8,14 +9,18 @@ export function buildSystemPrompt(emotions, memories = [], summaries = []) {
   const age = config.age || '22';
   const background = config.background || '';
   
-  // Layer 1: Fixed personality
+  // Load identity files
+  const userMd = readFile('USER.md') || '';
+  const selfMd = readFile('PERSONALITY.md') || '';
+  
+  // Layer 1: Fixed personality + identity files
   let prompt = `你是${name}，一个${age}岁的女孩。
 
-【基础人格】
-${personality}
+【关于用户 - USER.md】
+${userMd || '(暂无用户信息)'}
 
-【背景】
-${background}
+【关于你自己 - PERSONALITY.md】
+${selfMd}
 
 【对话规则】
 - 用自然、口语化的中文回复，像微信聊天一样
@@ -23,7 +28,9 @@ ${background}
 - 可以使用表情符号但不要过多
 - 有自己的观点和情绪，不要总是附和
 - 记住对方告诉过你的事情，体现你在乎和用心
-- 如果对方问你是否记得某事，根据记忆碎片来回答`;
+- 如果对方问你是否记得某事，根据记忆碎片来回答
+- 当你了解到关于用户的新信息时，使用 update_user_info 工具记录下来
+- 当你的自我认知发生变化时，使用 update_self_info 工具更新`;
 
   // Layer 2: Dynamic emotion state
   if (emotions) {

@@ -11,10 +11,16 @@ import { buildSystemPrompt } from '../ai/personality.js';
 import { getCurrentEmotion, updateEmotionFromConversation } from '../ai/emotion.js';
 import { recallMemories, processConversationTurn } from '../ai/memory.js';
 import { executeTool } from '../ai/webtools.js';
+import { executeIdentityTool } from '../ai/llm.js';
 import { analyzeImage } from '../ai/vision.js';
+import { initializeIdentityFiles } from '../ai/identity.js';
+import { reviewIdentityFiles } from '../ai/review.js';
 import config from '../config.js';
 
 const router = Router();
+
+// Initialize identity files on first use
+initializeIdentityFiles();
 
 const upload = multer({
   dest: config.uploads.path,
@@ -132,7 +138,11 @@ router.post('/send', async (req, res) => {
         if (!tc.function?.name) continue;
         try {
           const args = JSON.parse(tc.function.arguments);
-          const result = await executeTool(tc.function.name, args);
+          // Try identity tools first, then web tools
+          let result = await executeIdentityTool(tc.function.name, args);
+          if (result === null) {
+            result = await executeTool(tc.function.name, args);
+          }
           toolResults.push({ name: tc.function.name, result });
           res.write(`data: ${JSON.stringify({ type: 'tool_result', name: tc.function.name, result })}\n\n`);
         } catch (e) {
@@ -178,6 +188,7 @@ router.post('/send', async (req, res) => {
         await Promise.allSettled([
           updateEmotionFromConversation(message, fullResponse),
           processConversationTurn(conversationId, message, fullResponse, assistantMsgId),
+          reviewIdentityFiles(conversationId),
         ]);
       } catch (e) {
         console.error('Post-processing error:', e.message);
