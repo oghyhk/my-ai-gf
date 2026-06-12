@@ -135,14 +135,14 @@ export async function executeIdentityTool(name, args) {
         const { action, section, content } = args;
         switch (action) {
           case 'append':
-            appendToSection(agentId, section, [content], agentId);
+            appendToSection(agentId, 'user', section, [content]);
             return `已更新 USER.md 的"${section}"`;
           case 'replace_section':
-            replaceSection(agentId, section, content, agentId);
+            replaceSection(agentId, 'user', section, content);
             return `已替换 USER.md 的"${section}"`;
           case 'update_key': {
             const [key, ...vals] = content.split(':').map(s => s.trim());
-            updateValue(agentId, section, key, vals.join(':'), agentId);
+            updateValue(agentId, 'user', section, key, vals.join(':'));
             return `已更新 USER.md 中"${section}"的"${key}"`;
           }
           default: return '未知操作';
@@ -152,14 +152,14 @@ export async function executeIdentityTool(name, args) {
         const { action, section, content } = args;
         switch (action) {
           case 'append':
-            appendToSection(agentId, section, [content], agentId);
+            appendToSection(agentId, 'self', section, [content]);
             return `已更新 PERSONALITY.md 的"${section}"`;
           case 'replace_section':
-            replaceSection(agentId, section, content, agentId);
+            replaceSection(agentId, 'self', section, content);
             return `已替换 PERSONALITY.md 的"${section}"`;
           case 'update_key': {
             const [key, ...vals] = content.split(':').map(s => s.trim());
-            updateValue(agentId, section, key, vals.join(':'), agentId);
+            updateValue(agentId, 'self', section, key, vals.join(':'));
             return `已更新 PERSONALITY.md 中"${section}"的"${key}"`;
           }
           default: return '未知操作';

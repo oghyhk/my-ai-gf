@@ -106,14 +106,14 @@ ${selfMd}
           switch (update.action) {
             case 'update_key': {
               const [key, ...vals] = (update.content || '').split(':').map(s => s.trim());
-              ok = updateValue(agentId, update.section, key, vals.join(':'), agentId);
+              ok = updateValue(agentId, 'self', update.section, key, vals.join(':'));
               break;
             }
             case 'append':
-              ok = appendToSection(agentId, update.section, [update.content], agentId);
+              ok = appendToSection(agentId, 'self', update.section, [update.content]);
               break;
             case 'replace_section':
-              ok = replaceSection(agentId, update.section, update.content, agentId);
+              ok = replaceSection(agentId, 'self', update.section, update.content);
               break;
           }
           if (ok) results.self.push(`${update.section}: ${update.content}`);

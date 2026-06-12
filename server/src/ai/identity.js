@@ -8,7 +8,7 @@ const USER_DIR = path.join(__dirname, '..', '..', 'data', 'user');
 function ensureDir(dir) { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); }
 function ensureUserDir() { ensureDir(USER_DIR); }
 
-export function getUserMdPath(agentId = 'global') {
+export function getUserMdPath(agentId) {
   return path.join(USER_DIR, `${agentId}-USER.md`);
 }
 
@@ -48,7 +48,7 @@ const USER_MD_TEMPLATE = `# 用户信息
 - 暂无记录
 `;
 
-function defaultPersonalityMd(agentName = '小悠') {
+function defaultPersonalityMd(agentName = 'AI') {
   return `# ${agentName} 的 AI 人格档案
 <!-- AI自动维护 -->
 
@@ -71,14 +71,6 @@ function defaultPersonalityMd(agentName = '小悠') {
 
 // ---- Init ----
 
-export function initializeIdentityFiles(agentId = 'default', agentName = '小悠') {
-  ensureUserDir();
-  const userPath = getUserMdPath(agentId);
-  if (!fs.existsSync(userPath)) fs.writeFileSync(userPath, USER_MD_TEMPLATE, 'utf-8');
-  const persPath = getPersonalityPath(agentId);
-  if (!fs.existsSync(persPath)) fs.writeFileSync(persPath, defaultPersonalityMd(agentName), 'utf-8');
-}
-
 export function ensureAgentFiles(agentId, agentName) {
   ensureUserDir();
   const up = getUserMdPath(agentId);
@@ -87,33 +79,13 @@ export function ensureAgentFiles(agentId, agentName) {
   if (!fs.existsSync(pp)) fs.writeFileSync(pp, defaultPersonalityMd(agentName), 'utf-8');
 }
 
-// ---- User MD (per-agent) ----
+// ---- Read ----
 
-export function readAgentUserMd(agentId = 'default') {
+export function readAgentUserMd(agentId) {
   const fp = getUserMdPath(agentId);
   if (!fs.existsSync(fp)) return USER_MD_TEMPLATE;
   return fs.readFileSync(fp, 'utf-8');
 }
-
-export function writeAgentUserMd(agentId, content) {
-  ensureUserDir();
-  fs.writeFileSync(getUserMdPath(agentId), content, 'utf-8');
-}
-
-// ---- Global User MD (for settings backward compat) ----
-
-export function readGlobalUserMd() {
-  const fp = path.join(USER_DIR, 'USER.md');
-  if (!fs.existsSync(fp)) return USER_MD_TEMPLATE;
-  return fs.readFileSync(fp, 'utf-8');
-}
-
-export function writeGlobalUserMd(content) {
-  ensureUserDir();
-  fs.writeFileSync(path.join(USER_DIR, 'USER.md'), content, 'utf-8');
-}
-
-// ---- Personality MD ----
 
 export function readAgentPersonality(agentId) {
   const fp = getPersonalityPath(agentId);
@@ -121,60 +93,64 @@ export function readAgentPersonality(agentId) {
   return fs.readFileSync(fp, 'utf-8');
 }
 
+// ---- Write ----
+
+export function writeAgentUserMd(agentId, content) {
+  ensureUserDir();
+  fs.writeFileSync(getUserMdPath(agentId), content, 'utf-8');
+}
+
 export function writeAgentPersonality(agentId, content) {
   ensureUserDir();
   fs.writeFileSync(getPersonalityPath(agentId), content, 'utf-8');
 }
 
-// ---- Section Editing ----
+// ---- Section editing (target = 'user' or 'self') ----
 
-function resolveFilepath(target, agentId) {
-  // target can be: 'USER.md', 'global-USER.md', or agentId (for agent personality)
-  if (target === 'global' || target === 'USER.md' || target === 'global-USER.md') {
-    return path.join(USER_DIR, 'USER.md');
-  }
-  if (target.includes('-')) {
-    return path.join(USER_DIR, `${target.substring(0, target.lastIndexOf('-')) || target}${target.includes('PERSONALITY') ? '-PERSONALITY.md' : '-USER.md'}`);
-  }
-  return getPersonalityPath(target);
+function resolvePath(agentId, target) {
+  if (target === 'user') return getUserMdPath(agentId);
+  return getPersonalityPath(agentId);
 }
 
-export function appendToSection(target, section, lines, agentId = 'default') {
-  const filepath = resolveFilepath(target, agentId);
-  const content = fs.existsSync(filepath) ? fs.readFileSync(filepath, 'utf-8') : '';
+function readResolved(agentId, target) {
+  const fp = resolvePath(agentId, target);
+  if (!fs.existsSync(fp)) return '';
+  return fs.readFileSync(fp, 'utf-8');
+}
+
+export function appendToSection(agentId, target, section, lines) {
+  const content = readResolved(agentId, target);
   if (!content) return false;
   const sectionRegex = new RegExp(`(## ${section}\\n)([\\s\\S]*?)(?=\\n## |$)`, 'i');
   const match = content.match(sectionRegex);
   if (!match) return false;
   const newContent = lines.map(l => l.startsWith('- ') ? l : `- ${l}`).join('\n');
   for (const line of lines) { if (match[2].includes(line.replace(/^- /, ''))) return false; }
-  fs.writeFileSync(filepath, content.replace(match[1] + match[2], match[1] + match[2].trimEnd() + '\n' + newContent), 'utf-8');
+  fs.writeFileSync(resolvePath(agentId, target), content.replace(match[1] + match[2], match[1] + match[2].trimEnd() + '\n' + newContent), 'utf-8');
   return true;
 }
 
-export function updateValue(target, section, key, value, agentId = 'default') {
-  const filepath = resolveFilepath(target, agentId);
-  const content = fs.existsSync(filepath) ? fs.readFileSync(filepath, 'utf-8') : '';
+export function updateValue(agentId, target, section, key, value) {
+  const content = readResolved(agentId, target);
   if (!content) return false;
   const sectionRegex = new RegExp(`(## ${section}\\n)([\\s\\S]*?)(?=\\n## |$)`, 'i');
   const match = content.match(sectionRegex);
   if (!match) return false;
   const keyRegex = new RegExp(`(- ${key}: ).*`, 'i');
   if (match[2].match(keyRegex)) {
-    fs.writeFileSync(filepath, content.replace(new RegExp(`(- ${key}: ).*`, 'i'), `$1${value}`), 'utf-8');
+    fs.writeFileSync(resolvePath(agentId, target), content.replace(new RegExp(`(- ${key}: ).*`, 'i'), `$1${value}`), 'utf-8');
   } else {
-    fs.writeFileSync(filepath, content.replace(match[1] + match[2], match[1] + match[2].trimEnd() + `\n- ${key}: ${value}`), 'utf-8');
+    fs.writeFileSync(resolvePath(agentId, target), content.replace(match[1] + match[2], match[1] + match[2].trimEnd() + `\n- ${key}: ${value}`), 'utf-8');
   }
   return true;
 }
 
-export function replaceSection(target, section, newContent, agentId = 'default') {
-  const filepath = resolveFilepath(target, agentId);
-  const content = fs.existsSync(filepath) ? fs.readFileSync(filepath, 'utf-8') : '';
+export function replaceSection(agentId, target, section, newContent) {
+  const content = readResolved(agentId, target);
   if (!content) return false;
   const sectionRegex = new RegExp(`## ${section}\\n[\\s\\S]*?(?=\\n## |$)`, 'i');
   if (content.match(sectionRegex)) {
-    fs.writeFileSync(filepath, content.replace(sectionRegex, `## ${section}\n${newContent}`), 'utf-8');
+    fs.writeFileSync(resolvePath(agentId, target), content.replace(sectionRegex, `## ${section}\n${newContent}`), 'utf-8');
     return true;
   }
   return false;

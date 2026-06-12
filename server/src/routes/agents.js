@@ -11,8 +11,8 @@ import {
 import {
   readAgentPersonality,
   writeAgentPersonality,
-  readGlobalUserMd,
-  writeGlobalUserMd,
+  readAgentUserMd,
+  writeAgentUserMd,
   ensureAgentFiles,
 } from '../ai/identity.js';
 
@@ -79,15 +79,15 @@ router.get('/:id/conversations', (req, res) => {
   res.json(convs);
 });
 
-// User profile (USER.md)
+// User profile (global USER.md — for settings page)
 router.get('/user/profile', (req, res) => {
-  const content = readGlobalUserMd();
+  const content = readAgentUserMd('default');
   res.json({ content });
 });
 
 router.put('/user/profile', (req, res) => {
-  writeGlobalUserMd(req.body.content || '');
-  res.json({ ok: true, content: readGlobalUserMd() });
+  writeAgentUserMd('default', req.body.content || '');
+  res.json({ ok: true, content: readAgentUserMd('default') });
 });
 
 export default router;
