@@ -5,11 +5,11 @@ export async function getConversations() {
   return res.json();
 }
 
-export async function createConversation(title = '') {
+export async function createConversation(title = '', agentId = 'default') {
   const res = await fetch(`${API_BASE}/chat/conversations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, agentId }),
   });
   return res.json();
 }

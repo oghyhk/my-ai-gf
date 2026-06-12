@@ -86,23 +86,41 @@ export function getMessagesRange(conversationId, afterMsgId, limit) {
 }
 
 // Conversation helpers
-export function createConversation(id, title = '') {
+export function createConversation(id, title = '', agentId = 'default') {
   const d = getDb();
-  d.prepare(`INSERT INTO conversations (id, title) VALUES (?, ?)`).run(id, title);
+  d.prepare(`INSERT INTO conversations (id, title, agent_id) VALUES (?, ?, ?)`).run(id, title, agentId);
   d.prepare(`INSERT INTO conv_counters (conversation_id) VALUES (?)`).run(id);
 }
 
-export function getConversations() {
+export function getConversations(agentId = null) {
   const d = getDb();
+  if (agentId) {
+    return d.prepare(`
+      SELECT c.*, a.name as agent_name, a.avatar_emoji as agent_avatar,
+        (SELECT content FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message,
+        (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) as message_count
+      FROM conversations c
+      LEFT JOIN agents a ON a.id = c.agent_id
+      WHERE c.agent_id = ?
+      ORDER BY c.updated_at DESC
+    `).all(agentId).map(maybeDecryptLast);
+  }
   return d.prepare(`
-    SELECT c.*, 
+    SELECT c.*, a.name as agent_name, a.avatar_emoji as agent_avatar,
       (SELECT content FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message,
       (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) as message_count
-    FROM conversations c ORDER BY c.updated_at DESC
-  `).all().map(row => ({
+    FROM conversations c
+    LEFT JOIN agents a ON a.id = c.agent_id
+    ORDER BY c.updated_at DESC
+  `).all().map(maybeDecryptLast);
+}
+
+function maybeDecryptLast(row) {
+  const lm = row.last_message;
+  return {
     ...row,
-    last_message: row.last_message && row.last_message.startsWith('0000') ? '' : (row.last_message || ''),
-  }));
+    last_message: lm && lm.startsWith('00') ? '' : (lm || ''),
+  };
 }
 
 export function deleteConversation(id) {
@@ -419,4 +437,64 @@ export function addMilestone(milestone) {
   d.prepare(
     `UPDATE relationship SET milestones = ? WHERE id = 1`
   ).run(JSON.stringify(milestones));
+}
+
+// ============ AGENT HELPERS ============
+
+export function getAgents() {
+  const d = getDb();
+  return d.prepare(`SELECT * FROM agents ORDER BY created_at ASC`).all();
+}
+
+export function getAgent(id) {
+  const d = getDb();
+  return d.prepare(`SELECT * FROM agents WHERE id = ?`).get(id);
+}
+
+export function createAgent(id, name, avatarEmoji, personality, age, background) {
+  const d = getDb();
+  d.prepare(`
+    INSERT INTO agents (id, name, avatar_emoji, personality, age, background)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(id, name, avatarEmoji, personality, age, background);
+  return getAgent(id);
+}
+
+export function updateAgent(id, updates) {
+  const d = getDb();
+  const fields = [];
+  const values = [];
+  for (const [k, v] of Object.entries(updates)) {
+    if (['name', 'avatar_emoji', 'personality', 'age', 'background'].includes(k)) {
+      fields.push(`${k} = ?`);
+      values.push(v);
+    }
+  }
+  if (fields.length === 0) return getAgent(id);
+  values.push(id);
+  d.prepare(`UPDATE agents SET ${fields.join(', ')}, updated_at = datetime('now') WHERE id = ?`).run(...values);
+  return getAgent(id);
+}
+
+export function deleteAgent(id) {
+  const d = getDb();
+  if (id === 'default') return false;
+  d.prepare(`DELETE FROM agents WHERE id = ?`).run(id);
+  return true;
+}
+
+export function getConversationsForAgent(agentId) {
+  return getConversations(agentId);
+}
+
+export function getConversation(id) {
+  const d = getDb();
+  const row = d.prepare(`
+    SELECT c.*, a.name as agent_name, a.avatar_emoji as agent_avatar
+    FROM conversations c
+    LEFT JOIN agents a ON a.id = c.agent_id
+    WHERE c.id = ?
+  `).get(id);
+  if (!row) return null;
+  return row;
 }
