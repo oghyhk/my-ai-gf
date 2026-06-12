@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import * as api from '../api/client';
 import MessageBubble from '../components/MessageBubble';
 import InputBar from '../components/InputBar';
+import PersonalPage from './PersonalPage';
 
 export default function ChatPage() {
   const navigate = useNavigate();
@@ -12,8 +13,9 @@ export default function ChatPage() {
   const [activeConvId, setActiveConvId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [streaming, setStreaming] = useState(false);
-  const [view, setView] = useState('agents'); // 'agents' | 'sessions' | 'chat'
+  const [view, setView] = useState('agents'); // 'agents' | 'sessions' | 'chat' | 'profile'
   const [showMenu, setShowMenu] = useState(false);
+  const [profileTarget, setProfileTarget] = useState(null);
   const messagesEndRef = useRef(null);
   const menuRef = useRef(null);
 
@@ -97,6 +99,17 @@ export default function ChatPage() {
     return Math.floor(diff/86400) + '天前';
   };
 
+  // ---- PROFILE VIEW ----
+  if (view === 'profile') {
+    return (
+      <PersonalPage
+        entityId={profileTarget?.id || 'default'}
+        entityType={profileTarget?.type || 'agent'}
+        onBack={() => setView('chat')}
+      />
+    );
+  }
+
   // ---- AGENTS VIEW (like WeChat contacts) ----
   if (view === 'agents') {
     return (
@@ -168,7 +181,15 @@ export default function ChatPage() {
     <div className="flex flex-col h-full" style={{ background: 'var(--bg-deep)' }}>
       <div className="app-header">
         <button onClick={() => { setView('sessions'); setMessages([]); }} className="text-2xl leading-none mr-2 w-8 h-8 rounded-lg flex items-center justify-center" style={{ color: 'var(--text-secondary)' }}>‹</button>
-        <h1 className="font-heading text-base font-bold flex-1" style={{ color: 'var(--text-primary)' }}>{agent?.name || 'AI'}</h1>
+        <div
+          onClick={() => { setProfileTarget({ id: activeAgent, type: 'agent' }); setView('profile'); }}
+          className="flex items-center gap-2 cursor-pointer flex-1"
+        >
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0" style={{ background: 'linear-gradient(135deg, var(--primary), var(--secondary))' }}>
+            {agent?.avatar_emoji || '🌸'}
+          </div>
+          <h1 className="font-heading text-base font-bold" style={{ color: 'var(--text-primary)' }}>{agent?.name || 'AI'}</h1>
+        </div>
         <div className="relative" ref={menuRef}>
           <button onClick={() => setShowMenu(!showMenu)} className="w-9 h-9 rounded-lg flex flex-col items-center justify-center gap-0.5" style={{ background: 'var(--bg-input)' }}>
             <span className="block w-4 h-0.5 rounded-full" style={{ background: 'var(--text-secondary)' }} />

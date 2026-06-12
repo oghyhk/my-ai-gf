@@ -28,21 +28,20 @@ export function getDb() {
   try {
     const cols = db.pragma("table_info(conversations)").map(c => c.name);
     if (!cols.includes('agent_id')) {
-      // Can't ALTER to add NOT NULL REFERENCES — recreate the table
       db.exec("DROP TABLE IF EXISTS conversations");
-      db.exec(`
-        CREATE TABLE conversations (
-          id TEXT PRIMARY KEY,
-          agent_id TEXT NOT NULL DEFAULT 'default' REFERENCES agents(id) ON DELETE CASCADE,
-          title TEXT DEFAULT '',
-          created_at DATETIME DEFAULT (datetime('now')),
-          updated_at DATETIME DEFAULT (datetime('now'))
-        )
-      `);
+      db.exec(`CREATE TABLE conversations (id TEXT PRIMARY KEY, agent_id TEXT NOT NULL DEFAULT 'default' REFERENCES agents(id) ON DELETE CASCADE, title TEXT DEFAULT '', created_at DATETIME DEFAULT (datetime('now')), updated_at DATETIME DEFAULT (datetime('now')))`);
     }
-  } catch (e) {
-    console.error('Migration error (non-fatal):', e.message);
-  }
+  } catch (e) { console.error('Migration error (non-fatal):', e.message); }
+  
+  // Migration: add profile fields to agents if old table lacks them
+  try {
+    const acols = db.pragma("table_info(agents)").map(c => c.name);
+    ['alias', 'bio', 'profile_pic'].forEach(col => {
+      if (!acols.includes(col)) {
+        db.exec(`ALTER TABLE agents ADD COLUMN ${col} TEXT DEFAULT ''`);
+      }
+    });
+  } catch (e) { console.error('Agent migration error (non-fatal):', e.message); }
   
   return db;
 }
@@ -471,12 +470,12 @@ export function getAgent(id) {
   return d.prepare(`SELECT * FROM agents WHERE id = ?`).get(id);
 }
 
-export function createAgent(id, name, avatarEmoji, personality, age, background) {
+export function createAgent(id, name, avatarEmoji, alias, bio, profilePic, personality, age, background) {
   const d = getDb();
   d.prepare(`
-    INSERT INTO agents (id, name, avatar_emoji, personality, age, background)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(id, name, avatarEmoji, personality, age, background);
+    INSERT INTO agents (id, name, avatar_emoji, alias, bio, profile_pic, personality, age, background)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(id, name, avatarEmoji, alias || '', bio || '', profilePic || '', personality, age, background);
   return getAgent(id);
 }
 
@@ -485,7 +484,7 @@ export function updateAgent(id, updates) {
   const fields = [];
   const values = [];
   for (const [k, v] of Object.entries(updates)) {
-    if (['name', 'avatar_emoji', 'personality', 'age', 'background'].includes(k)) {
+    if (['name', 'avatar_emoji', 'alias', 'bio', 'profile_pic', 'personality', 'age', 'background'].includes(k)) {
       fields.push(`${k} = ?`);
       values.push(v);
     }
@@ -517,4 +516,41 @@ export function getConversation(id) {
   `).get(id);
   if (!row) return null;
   return row;
+}
+
+// ============ USER PROFILE ============
+
+export function getUserProfile() {
+  const d = getDb();
+  return d.prepare(`SELECT * FROM user_profile WHERE id = 1`).get();
+}
+
+export function updateUserProfile(updates) {
+  const d = getDb();
+  const fields = [];
+  const values = [];
+  for (const [k, v] of Object.entries(updates)) {
+    if (['alias', 'bio', 'profile_pic'].includes(k)) {
+      fields.push(`${k} = ?`);
+      values.push(v);
+    }
+  }
+  if (fields.length === 0) return getUserProfile();
+  d.prepare(`UPDATE user_profile SET ${fields.join(', ')}, updated_at = datetime('now') WHERE id = 1`).run(...values);
+  return getUserProfile();
+}
+
+// Get moments for a specific user/agent
+export function getMomentsForEntity(entityType, entityId, limit = 20) {
+  const d = getDb();
+  if (entityType === 'user') {
+    return d.prepare(`
+      SELECT * FROM moments ORDER BY created_at DESC LIMIT ?
+    `).all(limit).map(row => ({
+      ...row, images: JSON.parse(row.images || '[]'),
+      interactions: d.prepare(`SELECT * FROM moment_interactions WHERE moment_id = ? ORDER BY created_at ASC`).all(row.id),
+    }));
+  }
+  // Agent moments don't exist yet in this schema, return empty
+  return [];
 }

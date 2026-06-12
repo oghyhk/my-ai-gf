@@ -13,6 +13,7 @@ import agentRouter from './routes/agent.js';
 import diaryRouter from './routes/diary.js';
 import relationshipRouter from './routes/relationship.js';
 import agentsRouter from './routes/agents.js';
+import profilesRouter from './routes/profiles.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -35,6 +36,7 @@ app.use('/api/moments', momentsRouter);
 app.use('/api/agent', agentRouter);
 app.use('/api/agents', agentsRouter);
 app.use('/api/diary', diaryRouter);
+app.use('/api/profiles', profilesRouter);
 app.use('/api/relationship', relationshipRouter);
 
 // Health check

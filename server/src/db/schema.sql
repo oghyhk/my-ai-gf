@@ -3,6 +3,9 @@ CREATE TABLE IF NOT EXISTS agents (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '小悠',
   avatar_emoji TEXT DEFAULT '🌸',
+  alias TEXT DEFAULT '',
+  bio TEXT DEFAULT '',
+  profile_pic TEXT DEFAULT '',
   personality TEXT DEFAULT '',
   age TEXT DEFAULT '22',
   background TEXT DEFAULT '',
@@ -10,8 +13,8 @@ CREATE TABLE IF NOT EXISTS agents (
   updated_at DATETIME DEFAULT (datetime('now'))
 );
 
-INSERT OR IGNORE INTO agents (id, name, avatar_emoji, personality, age, background)
-VALUES ('default', '小悠', '🌸', '温柔体贴，善解人意，说话自然有温度，偶尔撒娇或开玩笑。', '22', '大学生，喜欢阅读、音乐和旅行。');
+INSERT OR IGNORE INTO agents (id, name, avatar_emoji, alias, bio, personality, age, background)
+VALUES ('default', '小悠', '🌸', '小悠', '喜欢聊天和关心你 💕', '温柔体贴，善解人意，说话自然有温度，偶尔撒娇或开玩笑。', '22', '大学生，喜欢阅读、音乐和旅行。');
 
 CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY,
@@ -189,3 +192,15 @@ CREATE TABLE IF NOT EXISTS relationship (
 );
 
 INSERT OR IGNORE INTO relationship (id) VALUES (1);
+
+-- User profile (for personal page)
+CREATE TABLE IF NOT EXISTS user_profile (
+  id INTEGER PRIMARY KEY CHECK(id = 1),
+  alias TEXT DEFAULT '',
+  bio TEXT DEFAULT '',
+  profile_pic TEXT DEFAULT '',
+  created_at DATETIME DEFAULT (datetime('now')),
+  updated_at DATETIME DEFAULT (datetime('now'))
+);
+
+INSERT OR IGNORE INTO user_profile (id) VALUES (1);
