@@ -16,6 +16,7 @@ export default function ChatPage() {
   const [streaming, setStreaming] = useState(false);
   const [view, setView] = useState('agents');
   const [showMenu, setShowMenu] = useState(false);
+  const [lastUsage, setLastUsage] = useState({ prompt: 0, completion: 0 });
   const [profileTarget, setProfileTarget] = useState(null);
   const messagesEndRef = useRef(null);
   const menuRef = useRef(null);
@@ -92,7 +93,8 @@ export default function ChatPage() {
       await api.sendMessage(activeConvId, text,
         (c) => setMessages(prev => prev.map(m => m.id === assistantMsg.id ? { ...m, content: m.content + c } : m)),
         () => setStreaming(false),
-        (e) => { console.error(e); setStreaming(false); }
+        (e) => { console.error(e); setStreaming(false); },
+        (usage) => setLastUsage({ prompt: usage.prompt || 0, completion: usage.completion || 0 })
       );
     } catch (e) { console.error(e); setStreaming(false); }
   }, [activeConvId]);
@@ -107,9 +109,14 @@ export default function ChatPage() {
   };
 
   const estTokens = () => {
+    if (lastUsage.prompt > 0 || lastUsage.completion > 0) {
+      return { display: `提示 ${lastUsage.prompt.toLocaleString()} + 生成 ${lastUsage.completion.toLocaleString()} tokens`, isReal: true };
+    }
     const chars = messages.reduce((sum, m) => sum + (m.content || '').length, 0);
-    return Math.ceil(chars * 0.4);
+    const est = Math.ceil(chars * 1.5);
+    return { display: `约 ${est.toLocaleString()} tokens (估算)`, isReal: false };
   };
+  const tokenInfo = estTokens();
 
   // ---- PROFILE VIEW ----
   if (view === 'profile') {
@@ -229,8 +236,8 @@ export default function ChatPage() {
                 </button>
               ))}
               <div className="border-t mx-3 my-1" style={{ borderColor: 'var(--border-subtle)' }} />
-              <div className="px-4 py-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-                当前会话 · 约 {estTokens().toLocaleString()} tokens
+              <div className="px-4 py-1.5 text-xs" style={tokenInfo.isReal ? { color: 'var(--accent)' } : { color: 'var(--text-muted)' }}>
+                {tokenInfo.display}
               </div>
               <div className="border-t mx-3 my-1" style={{ borderColor: 'var(--border-subtle)' }} />
               <button onClick={createNewSession} className="w-full text-left px-4 py-2.5 text-sm" style={{ color: 'var(--text-primary)' }}>＋ 新建会话</button>

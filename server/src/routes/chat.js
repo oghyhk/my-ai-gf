@@ -100,13 +100,22 @@ router.post('/send', async (req, res) => {
     res.flushHeaders();
     
     let fullResponse = '';
+    let totalTokens = { prompt: 0, completion: 0 };
     let toolCallsAccum = [];
     
     try {
       const stream = await chatStream(contextMessages);
       
       for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta;
+        // Check for usage info (last chunk with usage)
+        if (chunk.usage) {
+          totalTokens.prompt = chunk.usage.prompt_tokens || 0;
+          totalTokens.completion = chunk.usage.completion_tokens || 0;
+          res.write(`data: ${JSON.stringify({ type: 'usage', prompt: totalTokens.prompt, completion: totalTokens.completion })}\n\n`);
+          continue;
+        }
+        
+        const delta = chunk.choices?.[0]?.delta;
         if (!delta) continue;
         
         if (delta.tool_calls) {
@@ -177,7 +186,7 @@ router.post('/send', async (req, res) => {
     const assistantMsgId = insertMessage(conversationId, 'assistant', fullResponse);
     updateConversationTime(conversationId);
     
-    res.write(`data: ${JSON.stringify({ type: 'done', messageId: assistantMsgId })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done', messageId: assistantMsgId, usage: totalTokens })}\n\n`);
     res.end();
     
     setImmediate(async () => {

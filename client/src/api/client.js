@@ -24,7 +24,7 @@ export async function getChatHistory(conversationId, limit = 50) {
   return res.json();
 }
 
-export async function sendMessage(conversationId, message, onChunk, onDone, onError) {
+export async function sendMessage(conversationId, message, onChunk, onDone, onError, onUsage) {
   const res = await fetch(`${API_BASE}/chat/send`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -49,6 +49,7 @@ export async function sendMessage(conversationId, message, onChunk, onDone, onEr
           const data = JSON.parse(line.slice(6));
           if (data.type === 'content') onChunk(data.content);
           else if (data.type === 'done') onDone(data);
+          else if (data.type === 'usage') { if (onUsage) onUsage(data); }
           else if (data.type === 'error') onError(data.error);
           else if (data.type === 'tool_result') onChunk(`\n[搜索: ${data.name}]\n`);
           else if (data.type === 'thinking') onChunk('');

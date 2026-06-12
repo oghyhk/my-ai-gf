@@ -192,6 +192,8 @@ export async function chat(messages, options = {}) {
   }
   
   if (stream) {
+    params.stream = true;
+    params.stream_options = { include_usage: true };
     return await deepseek.chat.completions.create(params);
   }
   
