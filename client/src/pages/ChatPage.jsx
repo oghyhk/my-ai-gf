@@ -159,7 +159,7 @@ export default function ChatPage() {
           {showMenu && (
             <div className="absolute right-0 top-full mt-1 rounded-xl py-1 border shadow-lg z-50 min-w-44" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-strong)' }}>
               <div className="px-4 py-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                {messages.length} 条消息 · 最近20条上下文
+                {messages.length} 条消息 · 最近100条上下文
               </div>
               <div className="px-4 py-1.5 text-xs" style={tk.isReal ? { color: 'var(--accent)' } : { color: 'var(--text-muted)' }}>
                 {tk.display}

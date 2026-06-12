@@ -66,7 +66,7 @@ router.get('/agent-session/:agentId', (req, res) => {
 // Get chat history
 router.get('/history/:conversationId', (req, res) => {
   const { conversationId } = req.params;
-  const limit = parseInt(req.query.limit) || 50;
+  const limit = parseInt(req.query.limit) || 100;
   const before = req.query.before ? parseInt(req.query.before) : null;
   const messages = getMessages(conversationId, limit, before);
   res.json(messages);
@@ -95,7 +95,7 @@ router.post('/send', async (req, res) => {
     
     const systemPrompt = buildSystemPrompt(agentId, emotions, memories, summaries);
     
-    const history = getMessages(conversationId, 20);
+    const history = getMessages(conversationId, 100);
     const contextMessages = [
       { role: 'system', content: systemPrompt },
       ...history.map(m => ({ role: m.role, content: m.content })),
