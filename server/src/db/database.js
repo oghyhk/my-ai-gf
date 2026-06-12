@@ -24,6 +24,16 @@ export function getDb() {
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   db.exec(schema);
   
+  // Migration: add agent_id to conversations if old table lacks it
+  try {
+    const cols = db.pragma("table_info(conversations)").map(c => c.name);
+    if (!cols.includes('agent_id')) {
+      db.exec("ALTER TABLE conversations ADD COLUMN agent_id TEXT NOT NULL DEFAULT 'default'");
+    }
+  } catch (e) {
+    // Column already exists or other error — ignore
+  }
+  
   return db;
 }
 
