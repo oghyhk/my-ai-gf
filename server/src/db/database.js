@@ -251,17 +251,20 @@ export function getMemoryByEntities(entities) {
 }
 
 // Emotion state
-export function getEmotionState() {
+export function getEmotionState(agentId = 'default') {
   const d = getDb();
-  const row = d.prepare(`SELECT * FROM emotion_state WHERE id = 1`).get();
+  let row = d.prepare(`SELECT * FROM emotion_state WHERE agent_id = ?`).get(agentId);
+  if (!row) {
+    d.prepare(`INSERT INTO emotion_state (agent_id) VALUES (?)`).run(agentId);
+    row = d.prepare(`SELECT * FROM emotion_state WHERE agent_id = ?`).get(agentId);
+  }
   return { ...row, emotions: JSON.parse(row.emotions) };
 }
 
-export function updateEmotionState(emotions) {
+export function updateEmotionState(agentId, emotions) {
   const d = getDb();
-  d.prepare(`
-    UPDATE emotion_state SET emotions = ?, last_updated = datetime('now') WHERE id = 1
-  `).run(JSON.stringify(emotions));
+  d.prepare(`INSERT INTO emotion_state (agent_id, emotions, last_updated) VALUES (?, ?, datetime('now'))
+    ON CONFLICT(agent_id) DO UPDATE SET emotions = ?, last_updated = datetime('now')`).run(agentId, JSON.stringify(emotions), JSON.stringify(emotions));
 }
 
 // Agent config

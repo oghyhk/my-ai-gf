@@ -5,7 +5,7 @@ import { getCurrentEmotion } from '../ai/emotion.js';
 const router = Router();
 
 router.get('/status', (req, res) => {
-  const emotions = getCurrentEmotion();
+  const emotions = getCurrentEmotion('default');
   const agents = getAgents();
   res.json({ emotions, agents, default_agent: agents[0] });
 });

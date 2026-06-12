@@ -42,7 +42,7 @@ async function processMoments() {
   if (unseen.length === 0) return;
   
   const agentConfig = getAllAgentConfig();
-  const emotions = getCurrentEmotion();
+  const emotions = getCurrentEmotion('default');
   
   for (const moment of unseen) {
     try {

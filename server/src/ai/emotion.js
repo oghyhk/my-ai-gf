@@ -15,26 +15,26 @@ const DEFAULT_EMOTIONS = {
 const DECAY_RATE = 0.95;
 const BASELINE = { ...DEFAULT_EMOTIONS };
 
-export function getCurrentEmotion() {
-  const state = getEmotionState();
+export function getCurrentEmotion(agentId = 'default') {
+  const state = getEmotionState(agentId);
   return state.emotions;
 }
 
-export function decayEmotions() {
-  const current = getCurrentEmotion();
+export function decayEmotions(agentId) {
+  const current = getCurrentEmotion(agentId);
   const decayed = {};
   for (const [key, value] of Object.entries(current)) {
     const baseline = BASELINE[key] ?? 0.3;
     decayed[key] = baseline + (value - baseline) * DECAY_RATE;
     decayed[key] = Math.max(0, Math.min(1, decayed[key]));
   }
-  updateEmotionState(decayed);
+  updateEmotionState(agentId, decayed);
   return decayed;
 }
 
-export async function updateEmotionFromConversation(userMessage, assistantMessage) {
+export async function updateEmotionFromConversation(agentId, userMessage, assistantMessage) {
   try {
-    const current = getCurrentEmotion();
+    const current = getCurrentEmotion(agentId);
     
     const prompt = `你是一个情绪分析引擎。根据以下对话内容，分析AI角色的情绪变化。
 
@@ -57,23 +57,19 @@ AI回复: "${assistantMessage}"
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       newEmotions = JSON.parse(jsonMatch ? jsonMatch[0] : text);
     } catch {
-      console.error('Failed to parse emotion response, keeping current state');
       return current;
     }
     
-    // Validate and clamp
     for (const key of Object.keys(DEFAULT_EMOTIONS)) {
-      if (typeof newEmotions[key] !== 'number') {
-        newEmotions[key] = current[key];
-      }
+      if (typeof newEmotions[key] !== 'number') newEmotions[key] = current[key];
       newEmotions[key] = Math.max(0, Math.min(1, newEmotions[key]));
     }
     
-    updateEmotionState(newEmotions);
+    updateEmotionState(agentId, newEmotions);
     return newEmotions;
   } catch (error) {
     console.error('Emotion update error:', error.message);
-    return getCurrentEmotion();
+    return getCurrentEmotion(agentId);
   }
 }
 
@@ -102,11 +98,19 @@ export function formatEmotionForPrompt(emotions) {
     : '你当前心情比较平静';
 }
 
-// Decay emotions every 10 minutes
+// Decay emotions every 10 minutes for all agents
 let decayInterval;
 export function startEmotionDecay() {
   if (decayInterval) return;
-  decayInterval = setInterval(decayEmotions, 10 * 60 * 1000);
+  decayInterval = setInterval(async () => {
+    try {
+      const { getAgents } = await import('../db/database.js');
+      const agents = getAgents();
+      for (const a of agents) {
+        decayEmotions(a.id);
+      }
+    } catch (e) { /* ignore */ }
+  }, 10 * 60 * 1000);
 }
 
 export function stopEmotionDecay() {

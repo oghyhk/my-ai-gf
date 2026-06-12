@@ -86,7 +86,7 @@ router.post('/send', async (req, res) => {
     const userMsgId = insertMessage(conversationId, 'user', message);
     updateConversationTime(conversationId);
     
-    const emotions = getCurrentEmotion();
+    const emotions = getCurrentEmotion(agentId);
     const memories = await recallMemories(message, conversationId);
     
     const { getSummaries } = await import('../db/database.js');
@@ -198,7 +198,7 @@ router.post('/send', async (req, res) => {
     setImmediate(async () => {
       try {
         await Promise.allSettled([
-          updateEmotionFromConversation(message, fullResponse),
+          updateEmotionFromConversation(agentId, message, fullResponse),
           processConversationTurn(conversationId, message, fullResponse, assistantMsgId),
           reviewIdentityFiles(conversationId, agentId),
         ]);

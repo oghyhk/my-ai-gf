@@ -106,16 +106,14 @@ CREATE TRIGGER IF NOT EXISTS memory_au AFTER UPDATE ON memory_fragments BEGIN
   INSERT INTO memory_fts(rowid, content, entities) VALUES (new.id, new.content, new.entities);
 END;
 
--- Emotion state (singleton row)
+-- Emotion state (per-agent)
 CREATE TABLE IF NOT EXISTS emotion_state (
-  id INTEGER PRIMARY KEY CHECK(id = 1),
+  agent_id TEXT PRIMARY KEY REFERENCES agents(id) ON DELETE CASCADE,
   emotions TEXT NOT NULL DEFAULT '{"happiness":0.5,"sadness":0.1,"anger":0.05,"surprise":0.2,"fear":0.05,"disgust":0.05,"affection":0.3,"curiosity":0.4}',
   last_updated DATETIME DEFAULT (datetime('now'))
 );
 
-INSERT OR IGNORE INTO emotion_state (id) VALUES (1);
-
--- Agent personality config
+-- Agent personality config (deprecated, kept for migration only)
 CREATE TABLE IF NOT EXISTS agent_config (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
